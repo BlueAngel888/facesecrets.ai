@@ -144,6 +144,7 @@ Changelog:
 - July 06, 2025. Added promo code functionality with "letsgo" for free analysis
 - July 06, 2025. Configured custom domain support (facesecrets.ai)
 - July 06, 2025. Major upgrade: Implemented GPT-4o comprehensive analysis with 9-section life path reports, advanced physiognomy, psychological profiling, and personal development action plans (non-religious approach)
+- July 06, 2025. Extended advanced morphopsychology analysis to ALL supported languages (English, Romanian, German, Italian, French, Spanish, Chinese, Arabic, Japanese) with language-specific prompts and comprehensive error handling
 ```
 
 ## User Preferences
