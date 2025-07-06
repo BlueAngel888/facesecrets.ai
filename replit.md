@@ -132,7 +132,7 @@ This is a Flask-based web application that provides AI-powered face analysis usi
 Changelog:
 - July 06, 2025. Initial setup
 - July 06, 2025. Added promo code functionality with "letsgo" for free analysis
-- July 06, 2025. Configured custom domain support (facesecrets.com)
+- July 06, 2025. Configured custom domain support (facesecrets.ai)
 ```
 
 ## User Preferences
