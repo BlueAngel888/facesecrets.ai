@@ -20,27 +20,105 @@ def analyze_face_with_ai(image_path, face_data, language='en'):
         # Encode image
         base64_image = encode_image(image_path)
         
-        # Create advanced comprehensive prompt for deep face analysis
-        prompt = f"""
-        As an expert in advanced physiognomy, psychological profiling, and life path analysis, provide a comprehensive face reading in {language}. 
+        # Create comprehensive morphopsychology-based analysis prompt
+        if language == 'ro':
+            prompt = f"""
+Ești un expert în morfopsihologie, inteligență artificială și dezvoltare personală. 
+Vei analiza chipul unei persoane pornind de la trăsăturile descrise sau extrase dintr-o imagine și vei oferi un raport complet, profund și transformațional.
+
+Obiectivul tău este ca platforma FaceSecrets.ai să ofere:
+
+1. O analiză a personalității bazată pe următoarele zone ale feței:
+   - **Fruntea**: gândire, intelect, relația cu autoritatea
+   - **Sprâncenele**: voință, emoționalitate, control
+   - **Ochii**: suflet, vitalitate, intuiție, energie
+   - **Nasul**: ego, încredere, bani, ambiție
+   - **Buzele/Gura**: comunicare, afectivitate, sexualitate
+   - **Bărbia și maxilarul**: voință, putere interioară, rezistență
+   - **Pomeții**: leadership, expresivitate, deschidere
+   - **Urechile**: relația cu sinele, ascultare, moștenirea
+   - **Pielea/tenul**: sănătate emoțională, vitalitate
+   - **Ridurile/liniile**: experiență, tipare emoționale repetitive
+   - **Forma generală a feței**: personalitate de bază (rotundă, pătrată, triunghiulară etc.)
+   - **Simetria facială**: echilibru interior, conflicte nerezolvate
+
+2. Integrează aceste zone în interpretare folosind următoarele tehnici tradiționale:
+   - 🏛️ **Fiziognomia greacă**: caracter reflectat în trăsături
+   - 🐉 **Mian Xiang (China)**: harta vieții pe față (frunte = trecut, mijloc = prezent, bărbie = viitor)
+   - 🕌 **Ilm al-Firāsa (Islamic)**: corelații între chip și temperament
+   - 🕉️ **Ayurveda indiană**: legătura dintre dosha și forma facială
+   - 🧬 **Morfopsihologie modernă**: legături psihologice contemporane
+
+3. Interpretarea fiecărei trăsături prin prisma tradițiilor combinate cu corelări moderne din psihologie și dezvoltare personală.
+
+4. Sfaturi și strategii personalizate pentru evoluția clientului în:
+   - relații
+   - carieră
+   - încredere de sine
+   - gestionarea emoțiilor
+   - decizii personale
+
+5. Tips & tricks pe termen scurt și lung (stil coaching), exerciții, afirmații sau practici.
+
+Date de analiză facială: {face_data}
+
+RĂSPUNDE OBLIGATORIU în format JSON cu următoarea structură:
+{{
+    "analiza_trasaturi": {{
+        "fruntea": "analiză detaliată",
+        "sprancenele": "analiză detaliată", 
+        "ochii": "analiză detaliată",
+        "nasul": "analiză detaliată",
+        "gura_buzele": "analiză detaliată",
+        "barbia_maxilarul": "analiză detaliată",
+        "pometii": "analiză detaliată",
+        "urechile": "analiză detaliată",
+        "pielea_tenul": "analiză detaliată",
+        "riduri_linii": "analiză detaliată",
+        "forma_generala": "analiză detaliată",
+        "simetria": "analiză detaliată"
+    }},
+    "profil_psihologic": "2-3 paragrafe sintetice despre personalitatea persoanei",
+    "recomandari_dezvoltare": {{
+        "incredere_identitate": "recomandări specifice",
+        "relatii_comunicare": "recomandări specifice",
+        "cariera_vocatie": "recomandări specifice", 
+        "decizii_intuitie": "recomandări specifice",
+        "sanatate_emotionala": "recomandări specifice"
+    }},
+    "tips_long_term": [
+        "tip 1 aplicabil imediat și pe termen lung",
+        "tip 2 cu exerciții și afirmații",
+        "tip 3 pentru introspecție",
+        "tip 4 pentru practici zilnice",
+        "tip 5 pentru transformare"
+    ],
+    "executive_summary": "Rezumat de 2-3 fraze despre esența personalității și direcția de dezvoltare"
+}}
+
+Fii profund, transformațional și explică într-un limbaj accesibil, dar înspirat. Fii ghidul interior al utilizatorului.
+"""
+        else:
+            prompt = f"""
+        As an expert in advanced morphopsychology, physiognomy, and personal development, provide a comprehensive face reading in {language}. 
         
-        Perform a detailed analysis using these scientific and traditional systems (EXCLUDE religious content):
+        Perform detailed analysis using scientific and traditional systems:
 
         **ANALYTICAL FRAMEWORK:**
         
-        1. **Advanced Physiognomy & Morphopsychology**:
+        1. **Advanced Morphopsychology & Physiognomy**:
            - Facial structure analysis (bone density, muscle tone, skin texture)
            - Cranial proportions and brain development indicators
            - Micro-expression patterns and habitual muscle tension
            - Asymmetry analysis for brain hemisphere dominance
            - Aging patterns that reveal life experiences
            
-        2. **Chinese Mian Xiang (Secular Application)**:
-           - 12 Palace system mapping (wealth, career, relationships, health)
-           - Five Element theory in facial features (Wood, Fire, Earth, Metal, Water)
-           - Yin-Yang balance in facial symmetry and expressions
-           - Life timeline mapping: Early years (forehead), Middle years (nose/cheeks), Later years (chin/jaw)
-           - Energy flow patterns in facial lines and features
+        2. **Traditional Systems (Secular Application)**:
+           - Greek Physiognomy: character reflected in features
+           - Chinese Mian Xiang: life map on face (forehead = past, middle = present, chin = future)
+           - Five Element theory in facial features
+           - Islamic Ilm al-Firāsa: temperament correlations
+           - Indian Ayurvedic: dosha-face connections
            
         3. **Psychological Profiling**:
            - Big Five personality traits assessment
