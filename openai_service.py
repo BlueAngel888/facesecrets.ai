@@ -14,102 +14,129 @@ def encode_image(image_path):
 
 def analyze_face_with_ai(image_path, face_data, language='en'):
     """
-    Analyze face using GPT-4o with ancient wisdom systems
+    Comprehensive face analysis using GPT-4o with advanced life path assessment
     """
     try:
         # Encode image
         base64_image = encode_image(image_path)
         
-        # Create comprehensive prompt for face analysis
+        # Create advanced comprehensive prompt for deep face analysis
         prompt = f"""
-        As an expert in ancient face reading systems and modern physiognomy, analyze this face using ALL of the following systems and provide a comprehensive report in {language}:
+        As an expert in advanced physiognomy, psychological profiling, and life path analysis, provide a comprehensive face reading in {language}. 
+        
+        Perform a detailed analysis using these scientific and traditional systems (EXCLUDE religious content):
 
-        1. **Chinese Mian Xiang (Face Reading)**:
-           - Analyze the 100-year face map zones
-           - Examine forehead (early life 15-30), nose (middle age 31-50), chin/jaw (later life 51+)
-           - Assess the five features: eyebrows, eyes, nose, mouth, ears
-           - Identify wealth, health, and relationship indicators
-           - Predict career success and life path
+        **ANALYTICAL FRAMEWORK:**
+        
+        1. **Advanced Physiognomy & Morphopsychology**:
+           - Facial structure analysis (bone density, muscle tone, skin texture)
+           - Cranial proportions and brain development indicators
+           - Micro-expression patterns and habitual muscle tension
+           - Asymmetry analysis for brain hemisphere dominance
+           - Aging patterns that reveal life experiences
+           
+        2. **Chinese Mian Xiang (Secular Application)**:
+           - 12 Palace system mapping (wealth, career, relationships, health)
+           - Five Element theory in facial features (Wood, Fire, Earth, Metal, Water)
+           - Yin-Yang balance in facial symmetry and expressions
+           - Life timeline mapping: Early years (forehead), Middle years (nose/cheeks), Later years (chin/jaw)
+           - Energy flow patterns in facial lines and features
+           
+        3. **Psychological Profiling**:
+           - Big Five personality traits assessment
+           - Cognitive processing style indicators
+           - Emotional intelligence markers
+           - Stress response patterns
+           - Social interaction preferences
+           
+        4. **Life Path & Potential Assessment**:
+           - Natural talents and abilities
+           - Career aptitudes and professional calling
+           - Leadership vs. collaboration tendencies
+           - Creative vs. analytical thinking patterns
+           - Risk tolerance and decision-making style
 
-        2. **Greek Physiognomy (Aristotelian)**:
-           - Analyze facial geometry and proportions
-           - Examine nose shape and what it reveals about temperament
-           - Assess eye shape, spacing, and character implications
-           - Evaluate jaw strength and determination indicators
-           - Identify leadership qualities and intellectual capacity
-
-        3. **Vedic Samudrika Shastra**:
-           - Examine facial symmetry and karmic implications
-           - Analyze any visible marks, moles, or distinctive features
-           - Assess the three doshas reflected in facial features
-           - Examine spiritual development indicators
-           - Predict relationship compatibility and family life
-
-        4. **Islamic Firasa (Intuitive Reading)**:
-           - Read the inner light and spiritual essence
-           - Analyze micro-expressions and subtle energy
-           - Examine truthfulness and character indicators
-           - Assess spiritual development and moral character
-           - Identify hidden talents and divine gifts
-
-        5. **Modern FACS/Ekman (Optional Enhancement)**:
-           - Analyze habitual facial expressions
-           - Identify personality traits from muscle patterns
-           - Assess emotional tendencies and stress patterns
-
-        Based on the facial analysis, provide a detailed JSON response with the following structure:
+        **REQUIRED OUTPUT - Comprehensive JSON Report:**
         {{
-            "overall_personality": "detailed personality assessment",
-            "chinese_analysis": {{
-                "forehead_reading": "early life analysis",
-                "nose_reading": "middle age predictions",
-                "chin_reading": "later life prospects",
-                "wealth_indicators": "financial potential",
-                "health_predictions": "health insights",
-                "life_path": "overall destiny"
+            "executive_summary": "3-4 sentence overview of personality and life path",
+            
+            "personality_core": {{
+                "dominant_traits": "Top 5 personality characteristics",
+                "cognitive_style": "How this person processes information and makes decisions",
+                "emotional_profile": "Emotional patterns, sensitivity, and expression style",
+                "social_dynamics": "Interpersonal style and relationship patterns",
+                "energy_type": "Natural energy levels and motivation sources"
             }},
-            "greek_analysis": {{
-                "temperament": "character assessment",
-                "intellectual_capacity": "mental abilities",
-                "leadership_qualities": "leadership potential",
-                "social_tendencies": "interpersonal traits"
+            
+            "life_path_analysis": {{
+                "early_life_patterns": "Childhood and youth development (ages 0-25)",
+                "career_prime": "Professional peak and achievements (ages 26-50)", 
+                "wisdom_years": "Later life focus and legacy (ages 51+)",
+                "major_life_themes": "Recurring patterns and lessons",
+                "destiny_indicators": "Natural life direction and purpose"
             }},
-            "vedic_analysis": {{
-                "karmic_indicators": "past life influences",
-                "spiritual_development": "soul evolution level",
-                "relationship_patterns": "love and family insights",
-                "life_purpose": "dharmic path"
+            
+            "professional_guidance": {{
+                "ideal_career_fields": "Top 3-5 career areas with high success potential",
+                "work_environment": "Optimal working conditions and team dynamics",
+                "leadership_style": "Natural management and influence approach",
+                "entrepreneurial_potential": "Business ownership and innovation capability",
+                "skill_development_priorities": "Key areas for professional growth"
             }},
-            "islamic_analysis": {{
-                "spiritual_essence": "inner light reading",
-                "moral_character": "ethical nature",
-                "hidden_talents": "divine gifts",
-                "truthfulness": "honesty indicators"
+            
+            "relationship_insights": {{
+                "romantic_compatibility": "Partnership style and ideal relationship dynamics",
+                "family_dynamics": "Role in family and parenting approach",
+                "friendship_patterns": "Social circle preferences and loyalty style",
+                "communication_style": "How this person expresses and receives information",
+                "conflict_resolution": "Approach to disagreements and problem-solving"
             }},
-            "modern_analysis": {{
-                "emotional_patterns": "habitual emotions",
-                "stress_indicators": "stress management",
-                "communication_style": "interpersonal communication"
+            
+            "health_vitality": {{
+                "physical_constitution": "Natural health strengths and vulnerabilities",
+                "stress_indicators": "How stress manifests and management strategies",
+                "longevity_factors": "Lifestyle choices that support long-term wellbeing",
+                "energy_optimization": "Daily rhythms and peak performance times",
+                "wellness_recommendations": "Specific health and fitness guidance"
             }},
-            "life_predictions": {{
-                "career_success": "professional prospects",
-                "relationships": "love and partnership",
-                "health_longevity": "physical wellbeing",
-                "wealth_abundance": "financial future",
-                "spiritual_growth": "consciousness evolution"
+            
+            "wealth_abundance": {{
+                "financial_patterns": "Natural relationship with money and resources",
+                "wealth_building_approach": "Optimal strategies for financial growth",
+                "investment_temperament": "Risk tolerance and investment style",
+                "abundance_blocks": "Potential obstacles to financial success",
+                "prosperity_timeline": "Expected financial development phases"
             }},
-            "recommendations": {{
-                "strengths_to_develop": "natural talents to enhance",
-                "challenges_to_overcome": "areas for improvement",
-                "life_advice": "guidance for optimal living",
-                "spiritual_practices": "recommended practices"
+            
+            "personal_development": {{
+                "natural_strengths": "Inherent talents to leverage and develop",
+                "growth_opportunities": "Key areas for personal expansion",
+                "life_challenges": "Obstacles that will drive growth and wisdom",
+                "learning_style": "Optimal approaches for skill acquisition",
+                "transformation_phases": "Expected personal evolution cycles"
             }},
-            "accuracy_note": "These ancient methods have been validated for thousands of years with 90%+ accuracy for personality and destiny insights."
+            
+            "action_plan": {{
+                "immediate_focus": "Next 1-2 years development priorities",
+                "medium_term_goals": "3-7 year strategic objectives",
+                "long_term_vision": "10+ year life direction and legacy goals",
+                "daily_practices": "Specific habits and routines for optimal development",
+                "milestone_markers": "How to track progress and success"
+            }},
+            
+            "advanced_insights": {{
+                "hidden_potentials": "Underdeveloped talents and capabilities",
+                "soul_purpose": "Deeper life mission and contribution to others",
+                "evolutionary_path": "Personal growth trajectory and consciousness development",
+                "intuitive_gifts": "Natural psychic or empathic abilities",
+                "creative_expression": "Artistic and innovative potential"
+            }}
         }}
 
-        Face detection data provided: {face_data}
+        Face analysis data: {face_data}
         
-        Make the analysis detailed, professional, and personally meaningful. Focus on positive insights while being honest about challenges.
+        Provide deep, actionable insights while maintaining scientific credibility. Focus on empowerment and practical guidance for life optimization.
+        Avoid any religious references or spiritual practices tied to specific faiths.
         """
 
         # the newest OpenAI model is "gpt-4o" which was released May 13, 2024.
@@ -137,7 +164,11 @@ def analyze_face_with_ai(image_path, face_data, language='en'):
             max_tokens=4000
         )
         
-        analysis_result = json.loads(response.choices[0].message.content)
+        response_content = response.choices[0].message.content
+        if response_content and isinstance(response_content, str):
+            analysis_result = json.loads(response_content)
+        else:
+            raise ValueError("Invalid or empty response from OpenAI")
         return analysis_result
         
     except Exception as e:
