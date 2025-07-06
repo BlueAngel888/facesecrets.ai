@@ -44,7 +44,12 @@ TRANSLATIONS = {
         'cancel_message': 'Your payment was cancelled. No charges were made.',
         'error_no_face': 'No face detected in the image. Please upload a clear photo showing your face.',
         'error_upload': 'Please upload an image file first.',
-        'processing': 'Processing your analysis...'
+        'processing': 'Processing your analysis...',
+        'promo_code_placeholder': 'Promo code',
+        'check_promo': 'Check',
+        'free_analysis': 'Free Analysis',
+        'promo_success': 'Promo code accepted! Free analysis unlocked.',
+        'promo_invalid': 'Invalid promo code. Please try again or proceed with payment.'
     },
     'ro': {
         'title': 'Descoperă-ți Secretele Profunde',
@@ -77,7 +82,12 @@ TRANSLATIONS = {
         'cancel_message': 'Plata ta a fost anulată. Nu s-au efectuat taxe.',
         'error_no_face': 'Nu s-a detectat nicio față în imagine. Te rog încarcă o fotografie clară care să îți arate fața.',
         'error_upload': 'Te rog încarcă mai întâi un fișier imagine.',
-        'processing': 'Se procesează analiza ta...'
+        'processing': 'Se procesează analiza ta...',
+        'promo_code_placeholder': 'Cod promoțional',
+        'check_promo': 'Verifică',
+        'free_analysis': 'Analiză Gratuită',
+        'promo_success': 'Cod promoțional acceptat! Analiza gratuită deblocată.',
+        'promo_invalid': 'Cod promoțional invalid. Te rog încearcă din nou sau continuă cu plata.'
     },
     # Add other languages - for brevity showing just English and Romanian
     # In production, all 9 languages would be fully translated

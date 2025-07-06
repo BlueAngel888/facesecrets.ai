@@ -6,6 +6,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const fileInput = document.getElementById('fileInput');
     const uploadForm = document.getElementById('uploadForm');
     const paymentBtn = document.getElementById('paymentBtn');
+    const freeAnalysisBtn = document.getElementById('freeAnalysisBtn');
+    const checkPromoBtn = document.getElementById('checkPromoBtn');
+    const promoCodeInput = document.getElementById('promoCode');
     const cameraBtn = document.getElementById('cameraBtn');
     const cameraModal = new bootstrap.Modal(document.getElementById('cameraModal'));
     const camera = document.getElementById('camera');
@@ -15,6 +18,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     let uploadedFile = false;
     let stream = null;
+    let freeAnalysisEnabled = false;
 
     // Upload area click handler
     uploadArea.addEventListener('click', () => {
@@ -296,6 +300,89 @@ document.addEventListener('DOMContentLoaded', function() {
         card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
         observer.observe(card);
     });
+
+    // Promo code functionality
+    checkPromoBtn.addEventListener('click', () => {
+        const promoCode = promoCodeInput.value.trim();
+        
+        if (!promoCode) {
+            showAlert('Please enter a promo code', 'warning');
+            return;
+        }
+
+        fetch('/check-promo-code', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                promo_code: promoCode
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                freeAnalysisEnabled = true;
+                freeAnalysisBtn.style.display = 'inline-block';
+                paymentBtn.style.display = 'none';
+                showAlert(data.message, 'success');
+                promoCodeInput.disabled = true;
+                checkPromoBtn.disabled = true;
+            } else {
+                showAlert(data.message, 'danger');
+            }
+        })
+        .catch(error => {
+            console.error('Promo code error:', error);
+            showAlert('Failed to check promo code. Please try again.', 'danger');
+        });
+    });
+
+    // Free analysis button click handler
+    if (freeAnalysisBtn) {
+        freeAnalysisBtn.addEventListener('click', () => {
+            if (!uploadedFile) {
+                showAlert('Please upload an image first', 'warning');
+                return;
+            }
+
+            if (!freeAnalysisEnabled) {
+                showAlert('Free analysis not enabled. Please enter a valid promo code.', 'warning');
+                return;
+            }
+
+            loadingModal.show();
+
+            fetch('/free-analysis', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadingModal.hide();
+                if (data.success) {
+                    showAlert(data.message, 'success');
+                    // Redirect to download
+                    setTimeout(() => {
+                        window.location.href = data.download_url;
+                    }, 2000);
+                } else {
+                    showAlert(data.error || 'Analysis failed', 'danger');
+                }
+            })
+            .catch(error => {
+                loadingModal.hide();
+                console.error('Free analysis error:', error);
+                showAlert('Analysis failed. Please try again.', 'danger');
+            });
+        });
+    }
+
+    // Enable promo code functionality initially
+    function enablePromoFeatures() {
+        if (uploadedFile) {
+            freeAnalysisBtn.disabled = false;
+        }
+    }
 
     // Add subtle animations to buttons
     const buttons = document.querySelectorAll('.btn');

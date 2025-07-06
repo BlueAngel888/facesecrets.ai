@@ -52,7 +52,15 @@ def detect_face_landmarks(image_path):
         rgb_image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         
         # Load face cascade
-        face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
+        try:
+            if hasattr(cv2, 'data') and hasattr(cv2.data, 'haarcascades'):
+                cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+            else:
+                cascade_path = '/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml'
+            face_cascade = cv2.CascadeClassifier(cascade_path)
+        except Exception:
+            # Alternative approach if cv2.data is not available
+            face_cascade = cv2.CascadeClassifier('/usr/share/opencv4/haarcascades/haarcascade_frontalface_default.xml')
         
         # Convert to grayscale for detection
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
@@ -137,6 +145,82 @@ def upload_file():
         logging.error(f"Upload error: {e}")
         return jsonify({'error': 'Upload failed'}), 500
 
+@app.route('/check-promo-code', methods=['POST'])
+def check_promo_code():
+    try:
+        data = request.get_json()
+        promo_code = data.get('promo_code', '').strip().lower()
+        
+        if promo_code == 'letsgo':
+            # Mark session as having valid free code
+            session['free_analysis'] = True
+            return jsonify({
+                'success': True,
+                'message': 'Promo code accepted! Free analysis unlocked.',
+                'free_analysis': True
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'Invalid promo code. Please try again or proceed with payment.',
+                'free_analysis': False
+            })
+    
+    except Exception as e:
+        logging.error(f"Promo code error: {e}")
+        return jsonify({'error': 'Failed to check promo code'}), 500
+
+@app.route('/free-analysis', methods=['POST'])
+def free_analysis():
+    try:
+        if 'uploaded_file' not in session:
+            return jsonify({'error': 'No file uploaded'}), 400
+        
+        if not session.get('free_analysis'):
+            return jsonify({'error': 'Free analysis not authorized'}), 400
+        
+        # Process the analysis directly without payment
+        uploaded_file = session.get('uploaded_file')
+        language = session.get('language', 'en')
+        
+        if not uploaded_file:
+            return jsonify({'error': 'No file found'}), 400
+        
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], uploaded_file)
+        if not os.path.exists(filepath):
+            return jsonify({'error': 'File not found'}), 400
+        
+        # Detect face features
+        face_data = detect_face_landmarks(filepath)
+        if not face_data:
+            return jsonify({'error': 'No face detected in image'}), 400
+        
+        # Perform AI analysis
+        analysis_result = analyze_face_with_ai(filepath, face_data, language)
+        
+        if 'error' in analysis_result:
+            return jsonify({'error': 'Analysis failed'}), 500
+        
+        # Generate PDF
+        pdf_filename = f"analysis_{uuid.uuid4().hex}.pdf"
+        pdf_path = os.path.join(tempfile.gettempdir(), pdf_filename)
+        
+        generate_analysis_pdf(analysis_result, pdf_path, language)
+        
+        # Store PDF info in session
+        session['pdf_file'] = pdf_path
+        session['analysis_complete'] = True
+        
+        return jsonify({
+            'success': True,
+            'message': 'Free analysis complete! Your report is ready.',
+            'download_url': '/download-pdf'
+        })
+    
+    except Exception as e:
+        logging.error(f"Free analysis error: {e}")
+        return jsonify({'error': 'Analysis failed'}), 500
+
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():
     try:
@@ -166,7 +250,10 @@ def create_checkout_session():
         # Store session ID for verification
         session['stripe_session_id'] = checkout_session.id
         
-        return redirect(checkout_session.url, code=303)
+        if checkout_session.url:
+            return redirect(checkout_session.url, code=303)
+        else:
+            return jsonify({'error': 'Payment setup failed - no checkout URL'}), 500
     
     except Exception as e:
         logging.error(f"Stripe error: {e}")
