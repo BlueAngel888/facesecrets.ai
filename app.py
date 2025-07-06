@@ -24,7 +24,14 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Stripe configuration
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
-YOUR_DOMAIN = os.environ.get('REPLIT_DEV_DOMAIN') if os.environ.get('REPLIT_DEPLOYMENT') != '' else os.environ.get('REPLIT_DOMAINS', 'localhost:5000').split(',')[0]
+# Domain configuration - supports custom domain via environment variable
+CUSTOM_DOMAIN = os.environ.get('CUSTOM_DOMAIN')
+if CUSTOM_DOMAIN:
+    YOUR_DOMAIN = CUSTOM_DOMAIN
+elif os.environ.get('REPLIT_DEPLOYMENT'):
+    YOUR_DOMAIN = os.environ.get('REPLIT_DOMAINS', 'localhost:5000').split(',')[0]
+else:
+    YOUR_DOMAIN = 'localhost:5000'
 
 # File upload configuration
 UPLOAD_FOLDER = 'static/uploads'
