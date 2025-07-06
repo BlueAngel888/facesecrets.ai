@@ -1,0 +1,455 @@
+/* Custom CSS for Ancient Wisdom Face Analysis */
+
+:root {
+    --primary-color: #2c3e50;
+    --secondary-color: #8e44ad;
+    --accent-color: #e74c3c;
+    --gold-color: #f39c12;
+    --mystical-purple: #6c5ce7;
+    --deep-blue: #2d3436;
+    --light-gray: #ddd;
+    --dark-gray: #636e72;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    line-height: 1.6;
+    color: var(--primary-color);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+}
+
+/* Language Selector */
+.language-selector {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+}
+
+/* Hero Section */
+.hero-section {
+    min-height: 100vh;
+    position: relative;
+    display: flex;
+    align-items: center;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    overflow: hidden;
+}
+
+.hero-section::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: url('https://pixabay.com/get/g2ba65e794643e75d5b3527e6813f3e1c3f48fa439e834a84f32f603b89497f38f84ead492dd21ebe074ead41b39d4f95083d6bd0d7621fc38b3baf58f297c0e8_1280.jpg') center/cover;
+    opacity: 0.1;
+    z-index: 1;
+}
+
+.hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(44, 62, 80, 0.7);
+    z-index: 2;
+}
+
+.hero-section .container {
+    position: relative;
+    z-index: 3;
+}
+
+.hero-title {
+    font-size: 3.5rem;
+    font-weight: 700;
+    color: white;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+    margin-bottom: 1rem;
+}
+
+.hero-subtitle {
+    font-size: 1.5rem;
+    color: #ecf0f1;
+    margin-bottom: 2rem;
+    font-weight: 300;
+}
+
+.animated-text {
+    animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+    from {
+        text-shadow: 0 0 20px #fff, 0 0 30px #fff, 0 0 40px var(--mystical-purple);
+    }
+    to {
+        text-shadow: 0 0 30px #fff, 0 0 40px #fff, 0 0 50px var(--mystical-purple);
+    }
+}
+
+/* Upload Section */
+.upload-section {
+    max-width: 500px;
+    margin: 0 auto;
+}
+
+.upload-area {
+    border: 3px dashed var(--gold-color);
+    border-radius: 15px;
+    padding: 3rem 2rem;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.9);
+    transition: all 0.3s ease;
+    cursor: pointer;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.upload-area:hover {
+    border-color: var(--mystical-purple);
+    background: rgba(255, 255, 255, 0.95);
+    transform: translateY(-5px);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+}
+
+.upload-area.dragover {
+    border-color: var(--accent-color);
+    background: rgba(231, 76, 60, 0.1);
+}
+
+.upload-icon {
+    font-size: 3rem;
+    color: var(--mystical-purple);
+    margin-bottom: 1rem;
+}
+
+.upload-content h3 {
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.upload-content p {
+    color: var(--dark-gray);
+    margin-bottom: 0;
+}
+
+/* Buttons */
+.btn-mystical {
+    background: linear-gradient(135deg, var(--mystical-purple), var(--secondary-color));
+    border: none;
+    color: white;
+    padding: 12px 30px;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.btn-mystical:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(108, 92, 231, 0.4);
+    color: white;
+}
+
+.btn-payment {
+    background: linear-gradient(135deg, var(--gold-color), #e67e22);
+    border: none;
+    color: white;
+    padding: 10px 25px;
+    border-radius: 25px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-payment:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(243, 156, 18, 0.4);
+    color: white;
+}
+
+.btn-payment:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Analysis Section */
+.analysis-section {
+    background: white;
+    padding: 5rem 0;
+}
+
+.section-title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.section-subtitle {
+    font-size: 1.2rem;
+    color: var(--dark-gray);
+    margin-bottom: 3rem;
+}
+
+.analysis-card {
+    background: white;
+    padding: 2.5rem 2rem;
+    border-radius: 15px;
+    text-align: center;
+    transition: all 0.3s ease;
+    border: 1px solid #eee;
+    height: 100%;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+}
+
+.analysis-card:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.15);
+    border-color: var(--mystical-purple);
+}
+
+.card-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto 1.5rem;
+    background: linear-gradient(135deg, var(--mystical-purple), var(--secondary-color));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.card-icon i {
+    font-size: 2rem;
+    color: white;
+}
+
+.analysis-card h4 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+.analysis-card p {
+    color: var(--dark-gray);
+    line-height: 1.6;
+}
+
+/* Sample Reports */
+.samples-section {
+    background: #f8f9fa;
+}
+
+.sample-report {
+    background: white;
+    padding: 3rem 2rem;
+    border-radius: 15px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+.sample-report.blurred {
+    filter: blur(2px);
+}
+
+.blur-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+}
+
+.blur-overlay i {
+    font-size: 3rem;
+    color: var(--mystical-purple);
+    margin-bottom: 1rem;
+}
+
+/* Testimonials */
+.testimonials-section {
+    background: var(--primary-color);
+    color: white;
+}
+
+.testimonials-section .section-title {
+    color: white;
+}
+
+.testimonial-card {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 2rem;
+    border-radius: 15px;
+    text-align: center;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.stars {
+    color: var(--gold-color);
+    margin-bottom: 1rem;
+}
+
+.stars i {
+    margin: 0 2px;
+}
+
+.testimonial-card p {
+    font-style: italic;
+    margin-bottom: 1rem;
+    line-height: 1.6;
+}
+
+.author {
+    font-weight: 600;
+    color: var(--gold-color);
+}
+
+/* Footer */
+.footer-section {
+    background: var(--deep-blue);
+    color: #ecf0f1;
+}
+
+.footer-section h5 {
+    color: var(--gold-color);
+    margin-bottom: 1rem;
+}
+
+.disclaimer {
+    font-size: 0.9rem;
+    color: var(--light-gray);
+    margin-bottom: 1rem;
+}
+
+/* Sticky Payment Bar */
+.sticky-payment-bar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(44, 62, 80, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 1rem 0;
+    z-index: 1000;
+    border-top: 2px solid var(--gold-color);
+    color: white;
+}
+
+/* Success Page */
+.success-card {
+    background: white;
+    padding: 3rem;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+}
+
+.preview-card {
+    background: #f8f9fa;
+    padding: 1.5rem;
+    border-radius: 10px;
+    border-left: 4px solid var(--mystical-purple);
+}
+
+.preview-card h5 {
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+/* Cancel Page */
+.cancel-card {
+    background: white;
+    padding: 3rem;
+    border-radius: 20px;
+    box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+}
+
+/* Camera Modal */
+#camera {
+    border-radius: 10px;
+    max-width: 100%;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .hero-title {
+        font-size: 2.5rem;
+    }
+    
+    .hero-subtitle {
+        font-size: 1.2rem;
+    }
+    
+    .upload-area {
+        padding: 2rem 1rem;
+    }
+    
+    .analysis-card {
+        margin-bottom: 2rem;
+    }
+    
+    .sticky-payment-bar .container .row {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .sticky-payment-bar .col-md-4 {
+        text-align: center !important;
+    }
+}
+
+@media (max-width: 576px) {
+    .hero-title {
+        font-size: 2rem;
+    }
+    
+    .section-title {
+        font-size: 2rem;
+    }
+    
+    .upload-area {
+        padding: 1.5rem 1rem;
+    }
+    
+    .upload-icon {
+        font-size: 2rem;
+    }
+}
+
+/* Animation for upload success */
+.upload-success {
+    border-color: #28a745 !important;
+    background: rgba(40, 167, 69, 0.1) !important;
+}
+
+.upload-success .upload-icon {
+    color: #28a745 !important;
+}
+
+/* Loading spinner customization */
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}

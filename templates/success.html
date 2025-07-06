@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="{{ language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ translations.success_title }} - Ancient Face Analysis</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                {% if error %}
+                <div class="alert alert-danger text-center">
+                    <i class="fas fa-exclamation-triangle fa-3x mb-3"></i>
+                    <h3>Analysis Error</h3>
+                    <p>{{ error }}</p>
+                    <a href="{{ url_for('index') }}" class="btn btn-primary">Try Again</a>
+                </div>
+                {% elif pdf_ready %}
+                <div class="success-card text-center">
+                    <i class="fas fa-check-circle fa-4x text-success mb-4"></i>
+                    <h1 class="display-4">{{ translations.success_title }}</h1>
+                    <p class="lead">Your comprehensive face analysis report is ready!</p>
+                    
+                    <div class="mt-4">
+                        <a href="{{ url_for('download_pdf') }}" class="btn btn-success btn-lg">
+                            <i class="fas fa-download"></i> {{ translations.download_pdf }}
+                        </a>
+                    </div>
+                    
+                    {% if analysis %}
+                    <div class="analysis-preview mt-5">
+                        <h3>Analysis Preview</h3>
+                        <div class="row g-3 mt-3">
+                            {% if analysis.overall_personality %}
+                            <div class="col-12">
+                                <div class="preview-card">
+                                    <h5>Overall Personality</h5>
+                                    <p>{{ analysis.overall_personality[:200] }}...</p>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if analysis.chinese_analysis %}
+                            <div class="col-md-6">
+                                <div class="preview-card">
+                                    <h5>Chinese Mian Xiang</h5>
+                                    <p>{{ analysis.chinese_analysis.life_path[:150] if analysis.chinese_analysis.life_path else 'Detailed analysis available in PDF' }}...</p>
+                                </div>
+                            </div>
+                            {% endif %}
+                            
+                            {% if analysis.greek_analysis %}
+                            <div class="col-md-6">
+                                <div class="preview-card">
+                                    <h5>Greek Physiognomy</h5>
+                                    <p>{{ analysis.greek_analysis.temperament[:150] if analysis.greek_analysis.temperament else 'Detailed analysis available in PDF' }}...</p>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
+                        
+                        <div class="mt-4">
+                            <p class="text-muted">
+                                <i class="fas fa-info-circle"></i> 
+                                Complete detailed analysis with all systems available in your PDF report.
+                            </p>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="mt-5">
+                        <p class="text-muted">
+                            <i class="fas fa-shield-alt"></i> 
+                            Your photo and analysis will be automatically deleted after download for your privacy.
+                        </p>
+                    </div>
+                </div>
+                {% else %}
+                <div class="text-center">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h3>Processing Your Analysis...</h3>
+                    <p>Please wait while we generate your report.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

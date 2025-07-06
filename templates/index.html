@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="{{ language }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ translations.title }} - Ancient Face Analysis</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <!-- Language Selector -->
+    <div class="language-selector">
+        <div class="dropdown">
+            <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="fas fa-globe"></i> {{ languages[language] }}
+            </button>
+            <ul class="dropdown-menu">
+                {% for code, name in languages.items() %}
+                <li><a class="dropdown-item" href="?lang={{ code }}">{{ name }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <section class="hero-section">
+        <div class="hero-overlay"></div>
+        <div class="container">
+            <div class="row justify-content-center text-center">
+                <div class="col-lg-8">
+                    <h1 class="hero-title animated-text">{{ translations.hook }}</h1>
+                    <p class="hero-subtitle">{{ translations.subtitle }}</p>
+                    
+                    <!-- Upload Section -->
+                    <div class="upload-section mt-5">
+                        <form id="uploadForm" enctype="multipart/form-data">
+                            <input type="hidden" name="language" value="{{ language }}">
+                            <div class="upload-area" id="uploadArea">
+                                <div class="upload-content">
+                                    <i class="fas fa-cloud-upload-alt upload-icon"></i>
+                                    <h3>{{ translations.upload_button }}</h3>
+                                    <p>Drop your photo here or click to browse</p>
+                                    <input type="file" id="fileInput" name="file" accept="image/*" hidden>
+                                </div>
+                            </div>
+                        </form>
+                        
+                        <!-- Camera Button -->
+                        <button class="btn btn-mystical btn-lg mt-3" id="cameraBtn">
+                            <i class="fas fa-camera"></i> {{ translations.camera_button }}
+                        </button>
+                        
+                        <!-- Camera Modal -->
+                        <div class="modal fade" id="cameraModal" tabindex="-1">
+                            <div class="modal-dialog modal-lg">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Take Photo</h5>
+                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <div class="modal-body text-center">
+                                        <video id="camera" width="100%" height="400" autoplay></video>
+                                        <canvas id="canvas" style="display: none;"></canvas>
+                                        <div class="mt-3">
+                                            <button class="btn btn-primary" id="captureBtn">
+                                                <i class="fas fa-camera"></i> Capture Photo
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Analysis Methods Section -->
+    <section class="analysis-section py-5">
+        <div class="container">
+            <div class="row text-center mb-5">
+                <div class="col">
+                    <h2 class="section-title">Ancient Wisdom Meets Modern AI</h2>
+                    <p class="section-subtitle">{{ translations.accuracy_claim }}</p>
+                </div>
+            </div>
+            
+            <div class="row g-4">
+                <!-- Chinese Analysis -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="analysis-card">
+                        <div class="card-icon">
+                            <i class="fas fa-yin-yang"></i>
+                        </div>
+                        <h4>{{ translations.chinese_title }}</h4>
+                        <p>{{ translations.chinese_desc }}</p>
+                    </div>
+                </div>
+                
+                <!-- Greek Analysis -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="analysis-card">
+                        <div class="card-icon">
+                            <i class="fas fa-university"></i>
+                        </div>
+                        <h4>{{ translations.greek_title }}</h4>
+                        <p>{{ translations.greek_desc }}</p>
+                    </div>
+                </div>
+                
+                <!-- Vedic Analysis -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="analysis-card">
+                        <div class="card-icon">
+                            <i class="fas fa-om"></i>
+                        </div>
+                        <h4>{{ translations.vedic_title }}</h4>
+                        <p>{{ translations.vedic_desc }}</p>
+                    </div>
+                </div>
+                
+                <!-- Islamic Analysis -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="analysis-card">
+                        <div class="card-icon">
+                            <i class="fas fa-star-and-crescent"></i>
+                        </div>
+                        <h4>{{ translations.islamic_title }}</h4>
+                        <p>{{ translations.islamic_desc }}</p>
+                    </div>
+                </div>
+                
+                <!-- Modern Analysis -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="analysis-card">
+                        <div class="card-icon">
+                            <i class="fas fa-brain"></i>
+                        </div>
+                        <h4>{{ translations.modern_title }}</h4>
+                        <p>{{ translations.modern_desc }}</p>
+                    </div>
+                </div>
+                
+                <!-- AI Integration -->
+                <div class="col-lg-4 col-md-6">
+                    <div class="analysis-card">
+                        <div class="card-icon">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                        <h4>AI Integration</h4>
+                        <p>Advanced GPT-4 analysis combining all systems for comprehensive insights</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Sample Reports Carousel -->
+    <section class="samples-section py-5 bg-light">
+        <div class="container">
+            <div class="row">
+                <div class="col text-center mb-5">
+                    <h2 class="section-title">Sample Analysis Reports</h2>
+                    <p class="section-subtitle">See what your detailed report will contain</p>
+                </div>
+            </div>
+            
+            <div id="samplesCarousel" class="carousel slide" data-bs-ride="carousel">
+                <div class="carousel-inner">
+                    <div class="carousel-item active">
+                        <div class="row justify-content-center">
+                            <div class="col-md-6">
+                                <div class="sample-report blurred">
+                                    <h4>Chinese Mian Xiang Analysis</h4>
+                                    <p>Complete 100-year face map reading with detailed predictions for each life stage...</p>
+                                    <div class="blur-overlay">
+                                        <i class="fas fa-lock"></i>
+                                        <p>Full report available after analysis</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item">
+                        <div class="row justify-content-center">
+                            <div class="col-md-6">
+                                <div class="sample-report blurred">
+                                    <h4>Greek Physiognomy Report</h4>
+                                    <p>Aristotelian analysis of character traits and intellectual capacity...</p>
+                                    <div class="blur-overlay">
+                                        <i class="fas fa-lock"></i>
+                                        <p>Full report available after analysis</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="carousel-item">
+                        <div class="row justify-content-center">
+                            <div class="col-md-6">
+                                <div class="sample-report blurred">
+                                    <h4>Vedic Samudrika Analysis</h4>
+                                    <p>Karmic insights and spiritual development indicators...</p>
+                                    <div class="blur-overlay">
+                                        <i class="fas fa-lock"></i>
+                                        <p>Full report available after analysis</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button class="carousel-control-prev" type="button" data-bs-target="#samplesCarousel" data-bs-slide="prev">
+                    <span class="carousel-control-prev-icon"></span>
+                </button>
+                <button class="carousel-control-next" type="button" data-bs-target="#samplesCarousel" data-bs-slide="next">
+                    <span class="carousel-control-next-icon"></span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="testimonials-section py-5">
+        <div class="container">
+            <div class="row">
+                <div class="col text-center mb-5">
+                    <h2 class="section-title">What Our Users Say</h2>
+                </div>
+            </div>
+            
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <div class="testimonial-card">
+                        <div class="stars">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <p>"Incredibly accurate! The Chinese face reading revealed details about my personality that even I didn't realize."</p>
+                        <div class="author">- Sarah M.</div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="testimonial-card">
+                        <div class="stars">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <p>"The Vedic analysis helped me understand my life purpose better. Amazing ancient wisdom combined with modern technology."</p>
+                        <div class="author">- Michael R.</div>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="testimonial-card">
+                        <div class="stars">
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <p>"The comprehensive report covered all aspects of my personality and future. Well worth the investment!"</p>
+                        <div class="author">- Elena K.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer-section py-5">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-4">
+                    <h5>{{ translations.about_us }}</h5>
+                    <p>{{ translations.about_text }}</p>
+                </div>
+                <div class="col-lg-4">
+                    <h5>{{ translations.terms }}</h5>
+                    <p>{{ translations.terms_text }}</p>
+                </div>
+                <div class="col-lg-4">
+                    <h5>{{ translations.privacy }}</h5>
+                    <p>{{ translations.privacy_text }}</p>
+                </div>
+            </div>
+            
+            <hr class="my-4">
+            
+            <div class="row">
+                <div class="col text-center">
+                    <p class="disclaimer">{{ translations.disclaimer }}</p>
+                    <p>&copy; 2025 Ancient Wisdom AI. All rights reserved.</p>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Sticky Payment Bar -->
+    <div class="sticky-payment-bar">
+        <div class="container">
+            <div class="row align-items-center">
+                <div class="col-md-8">
+                    <strong>{{ translations.price_text }}</strong>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-payment" id="paymentBtn" disabled>
+                        <i class="fas fa-lock"></i> Secure Payment
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Modal -->
+    <div class="modal fade" id="loadingModal" tabindex="-1" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center p-4">
+                    <div class="spinner-border text-primary mb-3" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <h5>{{ translations.processing }}</h5>
+                    <p>Please wait while we analyze your image...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
