@@ -62,38 +62,38 @@ Obiectivul tău este ca platforma FaceSecrets.ai să ofere:
 
 Date de analiză facială: {face_data}
 
-RĂSPUNDE OBLIGATORIU în format JSON cu următoarea structură:
+RĂSPUNDE OBLIGATORIU în format JSON valid cu următoarea structură:
 {{
     "analiza_trasaturi": {{
-        "fruntea": "analiză detaliată",
-        "sprancenele": "analiză detaliată", 
-        "ochii": "analiză detaliată",
-        "nasul": "analiză detaliată",
-        "gura_buzele": "analiză detaliată",
-        "barbia_maxilarul": "analiză detaliată",
-        "pometii": "analiză detaliată",
-        "urechile": "analiză detaliată",
-        "pielea_tenul": "analiză detaliată",
-        "riduri_linii": "analiză detaliată",
-        "forma_generala": "analiză detaliată",
-        "simetria": "analiză detaliată"
+        "fruntea": "analiza detaliata a frunții",
+        "sprancenele": "analiza detaliata a sprancenelor", 
+        "ochii": "analiza detaliata a ochilor",
+        "nasul": "analiza detaliata a nasului",
+        "gura_buzele": "analiza detaliata a gurii si buzelor",
+        "barbia_maxilarul": "analiza detaliata a barbiei si maxilarului",
+        "pometii": "analiza detaliata a pometilor",
+        "urechile": "analiza detaliata a urechilor",
+        "pielea_tenul": "analiza detaliata a pielii si tenului",
+        "riduri_linii": "analiza detaliata a ridurilor si liniilor",
+        "forma_generala": "analiza detaliata a formei generale",
+        "simetria": "analiza detaliata a simetriei"
     }},
-    "profil_psihologic": "2-3 paragrafe sintetice despre personalitatea persoanei",
+    "profil_psihologic": "Profil psihologic detaliat in 2-3 paragrafe",
     "recomandari_dezvoltare": {{
-        "incredere_identitate": "recomandări specifice",
-        "relatii_comunicare": "recomandări specifice",
-        "cariera_vocatie": "recomandări specifice", 
-        "decizii_intuitie": "recomandări specifice",
-        "sanatate_emotionala": "recomandări specifice"
+        "incredere_identitate": "recomandari pentru incredere si identitate",
+        "relatii_comunicare": "recomandari pentru relatii si comunicare",
+        "cariera_vocatie": "recomandari pentru cariera si vocatie", 
+        "decizii_intuitie": "recomandari pentru decizii si intuitie",
+        "sanatate_emotionala": "recomandari pentru sanatate emotionala"
     }},
     "tips_long_term": [
-        "tip 1 aplicabil imediat și pe termen lung",
-        "tip 2 cu exerciții și afirmații",
-        "tip 3 pentru introspecție",
-        "tip 4 pentru practici zilnice",
-        "tip 5 pentru transformare"
+        "primul tip pentru termen lung",
+        "al doilea tip cu exercitii",
+        "al treilea tip pentru introspecție",
+        "al patrulea tip pentru practici zilnice",
+        "al cincilea tip pentru transformare"
     ],
-    "executive_summary": "Rezumat de 2-3 fraze despre esența personalității și direcția de dezvoltare"
+    "executive_summary": "Rezumat executiv in 2-3 fraze despre personalitate si dezvoltare"
 }}
 
 Fii profund, transformațional și explică într-un limbaj accesibil, dar înspirat. Fii ghidul interior al utilizatorului.
@@ -244,7 +244,25 @@ Fii profund, transformațional și explică într-un limbaj accesibil, dar însp
         
         response_content = response.choices[0].message.content
         if response_content and isinstance(response_content, str):
-            analysis_result = json.loads(response_content)
+            try:
+                analysis_result = json.loads(response_content)
+            except json.JSONDecodeError as json_error:
+                logging.error(f"JSON parsing error: {json_error}")
+                logging.error(f"Raw response: {response_content[:500]}...")
+                # Create a basic fallback analysis structure
+                return {
+                    "executive_summary": "Analiza a fost completă dar nu a putut fi formatată corect. Vă rugăm să încercați din nou.",
+                    "analiza_trasaturi": {
+                        "fruntea": "Analiză indisponibilă din cauza unei erori de formatare",
+                        "ochii": "Analiză indisponibilă din cauza unei erori de formatare"
+                    },
+                    "profil_psihologic": "Profilul psihologic nu a putut fi generat din cauza unei erori tehnice.",
+                    "recomandari_dezvoltare": {
+                        "incredere_identitate": "Vă rugăm să încercați din nou pentru recomandări personalizate"
+                    },
+                    "tips_long_term": ["Încercați din nou pentru tips personalizați"],
+                    "parsing_error": True
+                }
         else:
             raise ValueError("Invalid or empty response from OpenAI")
         return analysis_result
@@ -252,8 +270,8 @@ Fii profund, transformațional și explică într-un limbaj accesibil, dar însp
     except Exception as e:
         logging.error(f"AI analysis error: {e}")
         return {
-            "error": "Analysis failed",
-            "message": "Unable to complete face analysis. Please try again."
+            "error": "Analysis failed", 
+            "message": f"Unable to complete face analysis: {str(e)}. Please try again."
         }
 
 def translate_text(text, target_language):
