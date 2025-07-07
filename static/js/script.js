@@ -14,6 +14,14 @@ document.addEventListener('DOMContentLoaded', function() {
     const camera = document.getElementById('camera');
     const canvas = document.getElementById('canvas');
     const captureBtn = document.getElementById('captureBtn');
+    
+    // Debug: Check if elements exist
+    console.log('Camera elements found:', {
+        cameraBtn: !!cameraBtn,
+        camera: !!camera,
+        canvas: !!canvas,
+        captureBtn: !!captureBtn
+    });
     const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
     
     let uploadedFile = false;
@@ -164,6 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function startCamera() {
+        console.log('Starting camera...');
         navigator.mediaDevices.getUserMedia({ 
             video: { 
                 facingMode: 'user',
@@ -172,8 +181,16 @@ document.addEventListener('DOMContentLoaded', function() {
             } 
         })
         .then(mediaStream => {
+            console.log('Camera stream obtained');
             stream = mediaStream;
             camera.srcObject = stream;
+            
+            // Wait for video to be ready
+            camera.onloadedmetadata = () => {
+                console.log('Camera metadata loaded');
+                camera.play();
+            };
+            
             cameraModal.show();
         })
         .catch(error => {
@@ -191,12 +208,22 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Capture photo
     captureBtn.addEventListener('click', () => {
+        console.log('Capture button clicked');
+        console.log('Camera ready state:', camera.readyState);
+        console.log('Video dimensions:', camera.videoWidth, 'x', camera.videoHeight);
+        
+        if (camera.readyState !== 4) {
+            showAlert('Camera not ready yet. Please wait a moment.', 'warning');
+            return;
+        }
+        
         const context = canvas.getContext('2d');
         canvas.width = camera.videoWidth;
         canvas.height = camera.videoHeight;
         context.drawImage(camera, 0, 0);
         
         canvas.toBlob(blob => {
+            console.log('Photo captured, blob size:', blob.size);
             const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
             handleFile(file);
             stopCamera();
