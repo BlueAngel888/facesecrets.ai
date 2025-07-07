@@ -434,7 +434,12 @@ document.addEventListener('DOMContentLoaded', function() {
             const context = canvas.getContext('2d');
             canvas.width = camera.videoWidth;
             canvas.height = camera.videoHeight;
-            context.drawImage(camera, 0, 0);
+            
+            // Flip the image back to normal when capturing (since video is mirrored)
+            context.save();
+            context.scale(-1, 1);
+            context.drawImage(camera, -camera.videoWidth, 0);
+            context.restore();
             
             canvas.toBlob(blob => {
                 console.log('Photo captured, blob size:', blob.size);

@@ -390,6 +390,7 @@ body {
 #camera {
     border-radius: 10px;
     max-width: 100%;
+    transform: scaleX(-1); /* Flip camera horizontally to fix mirror effect */
 }
 
 /* Smart Camera Guidance System */
