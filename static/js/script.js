@@ -27,6 +27,9 @@ document.addEventListener('DOMContentLoaded', function() {
     let uploadedFile = false;
     let stream = null;
     let freeAnalysisEnabled = false;
+    let guidanceInterval = null;
+    let lastGuidanceMessage = '';
+    let faceDetectionModel = null;
 
     // Upload area click handler
     uploadArea.addEventListener('click', () => {
@@ -189,6 +192,8 @@ document.addEventListener('DOMContentLoaded', function() {
             camera.onloadedmetadata = () => {
                 console.log('Camera metadata loaded');
                 camera.play();
+                // Start facial guidance after camera is ready
+                startFacialGuidance();
             };
             
             cameraModal.show();
@@ -203,6 +208,248 @@ document.addEventListener('DOMContentLoaded', function() {
         if (stream) {
             stream.getTracks().forEach(track => track.stop());
             stream = null;
+        }
+        stopFacialGuidance();
+    }
+
+    // Smart camera guidance system
+    function startFacialGuidance() {
+        const guidanceOverlay = document.getElementById('guidanceOverlay');
+        const guidanceText = document.getElementById('guidanceText');
+        
+        if (!guidanceOverlay || !guidanceText) {
+            console.warn('Guidance elements not found');
+            return;
+        }
+
+        guidanceOverlay.style.display = 'block';
+        guidanceText.textContent = 'Position your face in the center of the frame';
+
+        // Start guidance analysis every 500ms
+        guidanceInterval = setInterval(() => {
+            analyzeFacePosition();
+        }, 500);
+    }
+
+    function stopFacialGuidance() {
+        if (guidanceInterval) {
+            clearInterval(guidanceInterval);
+            guidanceInterval = null;
+        }
+        
+        const guidanceOverlay = document.getElementById('guidanceOverlay');
+        if (guidanceOverlay) {
+            guidanceOverlay.style.display = 'none';
+        }
+    }
+
+    function analyzeFacePosition() {
+        if (!camera || camera.readyState !== 4) return;
+
+        // Create a temporary canvas for analysis
+        const analysisCanvas = document.createElement('canvas');
+        const ctx = analysisCanvas.getContext('2d');
+        
+        analysisCanvas.width = camera.videoWidth;
+        analysisCanvas.height = camera.videoHeight;
+        
+        // Draw current frame
+        ctx.drawImage(camera, 0, 0);
+        
+        // Get image data for analysis
+        const imageData = ctx.getImageData(0, 0, analysisCanvas.width, analysisCanvas.height);
+        
+        // Analyze face position and lighting
+        const analysis = performFaceAnalysis(imageData, analysisCanvas.width, analysisCanvas.height);
+        
+        // Update guidance based on analysis
+        updateGuidanceMessage(analysis);
+    }
+
+    function performFaceAnalysis(imageData, width, height) {
+        const data = imageData.data;
+        
+        // Simple brightness analysis
+        let totalBrightness = 0;
+        let pixelCount = 0;
+        
+        // Analyze center region for face presence (simple approximation)
+        const centerX = width / 2;
+        const centerY = height / 2;
+        const regionSize = Math.min(width, height) * 0.3;
+        
+        let centerBrightness = 0;
+        let centerPixels = 0;
+        
+        for (let y = Math.max(0, centerY - regionSize/2); y < Math.min(height, centerY + regionSize/2); y++) {
+            for (let x = Math.max(0, centerX - regionSize/2); x < Math.min(width, centerX + regionSize/2); x++) {
+                const index = (y * width + x) * 4;
+                const brightness = (data[index] + data[index + 1] + data[index + 2]) / 3;
+                
+                centerBrightness += brightness;
+                centerPixels++;
+                totalBrightness += brightness;
+                pixelCount++;
+            }
+        }
+        
+        const avgBrightness = totalBrightness / pixelCount;
+        const avgCenterBrightness = centerBrightness / centerPixels;
+        
+        // Detect potential face region based on skin tone detection
+        const faceRegion = detectFaceRegion(data, width, height);
+        
+        return {
+            brightness: avgBrightness,
+            centerBrightness: avgCenterBrightness,
+            faceDetected: faceRegion.detected,
+            facePosition: faceRegion.position,
+            faceSize: faceRegion.size
+        };
+    }
+
+    function detectFaceRegion(data, width, height) {
+        // Simple skin tone detection
+        let skinPixels = 0;
+        let totalPixels = 0;
+        let faceX = 0, faceY = 0;
+        
+        for (let y = 0; y < height; y += 4) { // Sample every 4th pixel for performance
+            for (let x = 0; x < width; x += 4) {
+                const index = (y * width + x) * 4;
+                const r = data[index];
+                const g = data[index + 1];
+                const b = data[index + 2];
+                
+                // Simple skin tone detection
+                if (isSkinTone(r, g, b)) {
+                    skinPixels++;
+                    faceX += x;
+                    faceY += y;
+                }
+                totalPixels++;
+            }
+        }
+        
+        const skinRatio = skinPixels / totalPixels;
+        const detected = skinRatio > 0.05; // At least 5% skin tone pixels
+        
+        return {
+            detected: detected,
+            position: detected ? {
+                x: faceX / skinPixels,
+                y: faceY / skinPixels
+            } : { x: width/2, y: height/2 },
+            size: skinPixels
+        };
+    }
+
+    function isSkinTone(r, g, b) {
+        // Enhanced skin tone detection algorithm
+        return (r > 95 && g > 40 && b > 20 && 
+                Math.max(r, g, b) - Math.min(r, g, b) > 15 &&
+                Math.abs(r - g) > 15 && r > g && r > b);
+    }
+
+    function updateGuidanceMessage(analysis) {
+        const guidanceText = document.getElementById('guidanceText');
+        const captureBtn = document.getElementById('captureBtn');
+        const lightingIndicator = document.getElementById('lightingIndicator');
+        const faceIndicator = document.getElementById('faceIndicator');
+        const sizeIndicator = document.getElementById('sizeIndicator');
+        
+        if (!guidanceText) return;
+        
+        let message = '';
+        let isReadyToCapture = true;
+        
+        // Update quality indicators
+        updateQualityIndicator(lightingIndicator, 'lightbulb', analysis.brightness >= 80 && analysis.brightness <= 200);
+        updateQualityIndicator(faceIndicator, 'user', analysis.faceDetected);
+        updateQualityIndicator(sizeIndicator, 'expand-arrows-alt', analysis.faceSize >= 500 && analysis.faceSize <= 2000);
+        
+        // Lighting guidance
+        if (analysis.brightness < 80) {
+            message = '💡 Move to a brighter area or turn on more lights';
+            isReadyToCapture = false;
+        } else if (analysis.brightness > 200) {
+            message = '☀️ Too bright! Move away from direct light or reduce lighting';
+            isReadyToCapture = false;
+        }
+        
+        // Face detection guidance
+        else if (!analysis.faceDetected) {
+            message = '👤 Please position your face in the center of the frame';
+            isReadyToCapture = false;
+        }
+        
+        // Face positioning guidance
+        else if (analysis.faceDetected) {
+            const centerX = camera.videoWidth / 2;
+            const centerY = camera.videoHeight / 2;
+            const faceX = analysis.facePosition.x;
+            const faceY = analysis.facePosition.y;
+            
+            const offsetX = Math.abs(faceX - centerX);
+            const offsetY = Math.abs(faceY - centerY);
+            
+            if (offsetX > camera.videoWidth * 0.15) {
+                message = faceX < centerX ? '⬅️ Move slightly to the left' : '➡️ Move slightly to the right';
+                isReadyToCapture = false;
+            } else if (offsetY > camera.videoHeight * 0.15) {
+                message = faceY < centerY ? '⬆️ Move slightly up' : '⬇️ Move slightly down';
+                isReadyToCapture = false;
+            } else if (analysis.faceSize < 500) {
+                message = '🔍 Move closer to the camera';
+                isReadyToCapture = false;
+            } else if (analysis.faceSize > 2000) {
+                message = '📏 Move back a little - you\'re too close';
+                isReadyToCapture = false;
+            } else {
+                message = '✅ Perfect! Ready to capture';
+                isReadyToCapture = true;
+            }
+        }
+        
+        // Update guidance only if message changed
+        if (message !== lastGuidanceMessage) {
+            guidanceText.textContent = message;
+            lastGuidanceMessage = message;
+            
+            // Update capture button state and text
+            if (captureBtn) {
+                const captureText = captureBtn.querySelector('.capture-text');
+                if (isReadyToCapture) {
+                    captureBtn.classList.remove('btn-warning');
+                    captureBtn.classList.add('btn-success');
+                    captureBtn.style.animation = 'pulse 1s infinite';
+                    if (captureText) captureText.textContent = 'Capture Perfect Shot!';
+                } else {
+                    captureBtn.classList.remove('btn-success');
+                    captureBtn.classList.add('btn-warning');
+                    captureBtn.style.animation = 'none';
+                    if (captureText) captureText.textContent = 'Adjust Position';
+                }
+            }
+        }
+    }
+
+    function updateQualityIndicator(indicator, iconClass, isGood) {
+        if (!indicator) return;
+        
+        const parent = indicator.parentElement;
+        
+        // Update icon
+        indicator.className = `fas fa-${iconClass}`;
+        
+        // Update indicator status
+        parent.className = parent.className.replace(/\b(good|warning|error)\b/g, '');
+        parent.classList.add('indicator');
+        
+        if (isGood) {
+            parent.classList.add('good');
+        } else {
+            parent.classList.add('error');
         }
     }
 

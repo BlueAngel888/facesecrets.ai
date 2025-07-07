@@ -392,6 +392,157 @@ body {
     max-width: 100%;
 }
 
+/* Smart Camera Guidance System */
+.camera-container {
+    border-radius: 15px;
+    overflow: hidden;
+    background: #000;
+}
+
+.guidance-overlay {
+    pointer-events: none;
+    z-index: 10;
+}
+
+.face-guide-circle {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200px;
+    height: 260px;
+    border: 3px dashed rgba(255, 255, 255, 0.6);
+    border-radius: 50%;
+    animation: guidePulse 2s infinite;
+}
+
+@keyframes guidePulse {
+    0%, 100% { 
+        opacity: 0.6; 
+        transform: translate(-50%, -50%) scale(1);
+    }
+    50% { 
+        opacity: 0.9; 
+        transform: translate(-50%, -50%) scale(1.05);
+    }
+}
+
+.guidance-message {
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: 25px !important;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: messageSlide 0.3s ease-out;
+}
+
+@keyframes messageSlide {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.quality-indicators {
+    background: rgba(0, 0, 0, 0.7);
+    border-radius: 10px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.quality-indicators .indicator {
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+.quality-indicators .indicator i {
+    width: 20px;
+    transition: color 0.3s ease;
+}
+
+.quality-indicators .indicator.good i {
+    color: #28a745;
+}
+
+.quality-indicators .indicator.warning i {
+    color: #ffc107;
+}
+
+.quality-indicators .indicator.error i {
+    color: #dc3545;
+}
+
+/* Enhanced Capture Button States */
+#captureBtn {
+    min-width: 180px;
+    transition: all 0.3s ease;
+    border-radius: 25px;
+    font-weight: 600;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+#captureBtn.btn-success {
+    background: linear-gradient(45deg, #28a745, #20c997);
+    border: none;
+    transform: scale(1.05);
+}
+
+#captureBtn.btn-warning {
+    background: linear-gradient(45deg, #ffc107, #fd7e14);
+    border: none;
+}
+
+@keyframes pulse {
+    0% { 
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+    }
+    50% { 
+        box-shadow: 0 4px 25px rgba(40, 167, 69, 0.8);
+    }
+    100% { 
+        box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+    }
+}
+
+.camera-tips {
+    background: rgba(108, 117, 125, 0.1);
+    border-radius: 10px;
+    padding: 10px;
+    margin-top: 15px;
+}
+
+/* Mobile optimizations for camera guidance */
+@media (max-width: 768px) {
+    .face-guide-circle {
+        width: 150px;
+        height: 200px;
+    }
+    
+    .guidance-message {
+        font-size: 0.8rem;
+        max-width: 300px !important;
+    }
+    
+    .quality-indicators {
+        right: 10px !important;
+        top: 10px !important;
+        padding: 8px !important;
+    }
+    
+    .quality-indicators .indicator {
+        font-size: 0.7rem;
+    }
+    
+    #captureBtn {
+        min-width: 150px;
+        font-size: 0.9rem;
+    }
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
     .hero-title {
