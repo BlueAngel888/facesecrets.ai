@@ -409,7 +409,18 @@ body {
 #captureBtn {
     pointer-events: auto !important;
     position: relative;
-    z-index: 999;
+    z-index: 9999 !important;
+    cursor: pointer !important;
+}
+
+/* Fix modal z-index issues */
+.modal-body {
+    position: relative;
+    z-index: 1050;
+}
+
+#cameraModal .modal-content {
+    z-index: 1055;
 }
 
 .face-guide-circle {

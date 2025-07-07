@@ -477,6 +477,12 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 'image/jpeg', 0.9);
     }
+    
+    // Global function for inline onclick
+    window.capturePhotoNow = function() {
+        console.log('Capture button clicked via inline handler');
+        capturePhoto();
+    };
 
     // Global click handler for capture button
     document.addEventListener('click', function(e) {
