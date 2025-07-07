@@ -203,7 +203,7 @@ def free_analysis():
             return jsonify({'error': 'No face detected in image'}), 400
         
         # Perform AI analysis
-        analysis_result = analyze_face_with_ai(filepath, face_data, language)
+        analysis_result = analyze_face_with_ai(filepath, language)
         
         if 'error' in analysis_result:
             return jsonify({'error': 'Analysis failed'}), 500
@@ -298,7 +298,7 @@ def success():
             return render_template('success.html', error="No face detected in the image", language=language)
         
         # Analyze with AI
-        analysis_result = analyze_face_with_ai(filepath, face_data, language)
+        analysis_result = analyze_face_with_ai(filepath, language)
         
         # Generate PDF
         pdf_filename = f"analysis_{uuid.uuid4().hex}.pdf"
