@@ -1,9 +1,6 @@
 // Ancient Wisdom Face Analysis - Frontend JavaScript
 
-// Define empty capture function that will be populated after DOM loads
-window.capturePhotoNow = function() {
-    console.log('Capture function called before DOM ready');
-};
+// Camera capture will be defined after DOM loads
 
 document.addEventListener('DOMContentLoaded', function() {
     // Elements
@@ -69,40 +66,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let freeAnalysisEnabled = false;
     let guidanceInterval = null;
     
-    // Override the global capture function with access to DOM elements
-    window.capturePhotoNow = function() {
-        console.log('=== CAPTURE PHOTO CLICKED ===');
-        
-        if (!camera || camera.readyState !== 4) {
-            console.log('Camera not ready. State:', camera ? camera.readyState : 'no camera');
-            alert('Camera not ready. Please wait a moment.');
-            return;
-        }
-        
-        console.log('Camera dimensions:', camera.videoWidth, 'x', camera.videoHeight);
-        
-        const context = canvas.getContext('2d');
-        canvas.width = camera.videoWidth;
-        canvas.height = camera.videoHeight;
-        
-        // Flip image back to normal (unmirror)
-        context.save();
-        context.scale(-1, 1);
-        context.drawImage(camera, -camera.videoWidth, 0);
-        context.restore();
-        
-        canvas.toBlob(function(blob) {
-            console.log('Blob result:', blob ? 'Created, size: ' + blob.size : 'Failed');
-            if (blob && blob.size > 0) {
-                const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
-                handleFile(file);
-                stopCamera();
-                cameraModal.hide();
-            } else {
-                alert('Failed to capture photo. Please try again.');
-            }
-        }, 'image/jpeg', 0.9);
-    };
+
     let lastGuidanceMessage = '';
     let faceDetectionModel = null;
 
@@ -244,10 +208,85 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // Camera functionality
+    // Camera functionality  
     cameraBtn.addEventListener('click', () => {
         startCamera();
     });
+    
+    // Capture button setup - wait for modal to be shown
+    document.getElementById('cameraModal').addEventListener('shown.bs.modal', () => {
+        console.log('Camera modal shown, setting up capture button');
+        const captureBtn = document.getElementById('captureBtn');
+        if (captureBtn) {
+            // Remove any existing listeners
+            const newCaptureBtn = captureBtn.cloneNode(true);
+            captureBtn.parentNode.replaceChild(newCaptureBtn, captureBtn);
+            
+            // Add fresh listener
+            newCaptureBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                console.log('=== CAPTURE BUTTON CLICKED ===');
+                capturePhoto();
+            });
+        }
+    });
+    
+    // New capture photo function
+    function capturePhoto() {
+        console.log('Starting photo capture...');
+        
+        if (!camera || camera.readyState !== 4) {
+            console.error('Camera not ready');
+            showAlert('Camera not ready. Please wait a moment.', 'warning');
+            return;
+        }
+        
+        // Get canvas and context
+        const canvas = document.getElementById('canvas');
+        if (!canvas) {
+            console.error('Canvas not found');
+            return;
+        }
+        
+        const context = canvas.getContext('2d');
+        
+        // Set canvas size to match video
+        canvas.width = camera.videoWidth;
+        canvas.height = camera.videoHeight;
+        
+        console.log('Canvas size:', canvas.width, 'x', canvas.height);
+        
+        // Draw the video frame (flip horizontally to unmirror)
+        context.save();
+        context.scale(-1, 1);
+        context.drawImage(camera, -canvas.width, 0, canvas.width, canvas.height);
+        context.restore();
+        
+        // Convert to blob
+        canvas.toBlob(function(blob) {
+            console.log('Blob created:', blob ? blob.size + ' bytes' : 'failed');
+            
+            if (blob && blob.size > 0) {
+                // Create file from blob
+                const file = new File([blob], 'camera-capture.jpg', { 
+                    type: 'image/jpeg',
+                    lastModified: Date.now()
+                });
+                
+                // Use the existing handleFile function
+                handleFile(file);
+                
+                // Stop camera and close modal
+                stopCamera();
+                cameraModal.hide();
+                
+                showAlert('Photo captured successfully!', 'success');
+            } else {
+                console.error('Failed to create blob');
+                showAlert('Failed to capture photo. Please try again.', 'danger');
+            }
+        }, 'image/jpeg', 0.95);
+    }
 
     function startCamera() {
         console.log('Starting camera...');
@@ -269,8 +308,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 camera.play();
                 // Start facial guidance after camera is ready
                 startFacialGuidance();
-                // Setup capture button event listener
-                setupCaptureButton();
             };
             
             cameraModal.show();
@@ -496,50 +533,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Direct capture button event listener
-    function setupCaptureButton() {
-        // Wait a bit for modal to fully render
-        setTimeout(() => {
-            const captureButton = document.getElementById('captureBtn');
-            console.log('Setting up capture button:', !!captureButton);
-            if (captureButton) {
-                // Remove any existing listeners first
-                captureButton.replaceWith(captureButton.cloneNode(true));
-                const newCaptureButton = document.getElementById('captureBtn');
-                
-                newCaptureButton.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    console.log('Capture button clicked directly');
-                    capturePhoto();
-                }, { once: false });
-                
-                console.log('Capture button event listener added');
-            }
-        }, 500);
-    }
 
-    function capturePhoto() {
-        console.log('Capturing photo from capturePhoto function...');
-        window.capturePhotoNow();
-    }
-
-    // Global click handler for capture button
-    document.addEventListener('click', function(e) {
-        console.log('Global click on:', e.target.tagName, e.target.id, e.target.className);
-        
-        // Check if it's the capture button or its children
-        if (e.target.id === 'captureBtn' || 
-            e.target.closest('#captureBtn') || 
-            (e.target.tagName === 'BUTTON' && e.target.textContent.includes('Capture')) ||
-            (e.target.tagName === 'SPAN' && e.target.textContent.includes('Capture'))) {
-            
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Capture button detected via global handler');
-            capturePhoto();
-        }
-    }, true); // Use capture phase to catch events early
 
     // Stop camera when modal is hidden
     document.getElementById('cameraModal').addEventListener('hidden.bs.modal', () => {
