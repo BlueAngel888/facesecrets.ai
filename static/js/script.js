@@ -217,8 +217,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Setup camera modal shown event
     document.getElementById('cameraModal').addEventListener('shown.bs.modal', function() {
-        console.log('Camera modal opened, setting up capture button');
-        setupCaptureButton();
+        console.log('Camera modal opened');
+        console.log('takePhoto function exists:', typeof window.takePhoto);
+        console.log('camera element:', !!camera);
+        console.log('camera ready state:', camera ? camera.readyState : 'no camera');
     });
     
     // Setup capture button when modal is ready
