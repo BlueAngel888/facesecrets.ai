@@ -213,53 +213,59 @@ document.addEventListener('DOMContentLoaded', function() {
         startCamera();
     });
     
-    // Capture button setup - wait for modal to be shown
-    document.getElementById('cameraModal').addEventListener('shown.bs.modal', () => {
-        console.log('Camera modal shown, setting up capture button');
-        
-        // Use setTimeout to ensure DOM is fully ready
-        setTimeout(() => {
-            const captureBtn = document.getElementById('captureBtn');
-            console.log('Capture button found:', !!captureBtn);
-            
-            if (captureBtn) {
-                // Remove any existing onclick attribute
-                captureBtn.removeAttribute('onclick');
-                
-                // Add direct onclick handler
-                captureBtn.onclick = function(e) {
-                    console.log('=== CAPTURE BUTTON CLICKED (onclick) ===');
-                    e.preventDefault();
-                    e.stopPropagation();
-                    capturePhoto();
-                    return false;
-                };
-                
-                // Also add event listener as backup
-                captureBtn.addEventListener('click', function(e) {
-                    console.log('=== CAPTURE BUTTON CLICKED (addEventListener) ===');
-                    e.preventDefault();
-                    e.stopPropagation();
-                    capturePhoto();
-                }, false);
-                
-                console.log('Capture button handlers attached');
-            } else {
-                console.error('Capture button not found!');
-            }
-        }, 300);
-    });
-    
-    // Global click handler to catch capture button clicks
+    // Simple capture button click handler
     document.addEventListener('click', function(e) {
-        // Check if clicked element is capture button or its child
-        if (e.target.id === 'captureBtn' || e.target.closest('#captureBtn')) {
-            console.log('=== CAPTURE BUTTON CLICKED (global) ===');
+        const target = e.target;
+        const captureBtn = target.closest('#captureBtn');
+        
+        if (captureBtn || target.id === 'captureBtn') {
+            console.log('Capture button clicked!');
             e.preventDefault();
             e.stopPropagation();
-            capturePhoto();
+            
+            // Call capture function directly
+            if (camera && camera.readyState === 4) {
+                capturePhotoNow();
+            } else {
+                showAlert('Camera not ready. Please wait a moment.', 'warning');
+            }
         }
-    }, true); // Use capture phase
+    });
+    
+    // Function to capture photo
+    function capturePhotoNow() {
+        console.log('Capturing photo now...');
+        
+        const canvas = document.getElementById('canvas');
+        const context = canvas.getContext('2d');
+        
+        // Set canvas size
+        canvas.width = camera.videoWidth;
+        canvas.height = camera.videoHeight;
+        
+        // Draw video frame (unmirrored)
+        context.save();
+        context.scale(-1, 1);
+        context.drawImage(camera, -canvas.width, 0, canvas.width, canvas.height);
+        context.restore();
+        
+        // Convert to blob
+        canvas.toBlob(function(blob) {
+            if (blob) {
+                console.log('Photo captured successfully, size:', blob.size);
+                
+                // Create file and handle it
+                const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+                handleFile(file);
+                
+                // Close camera
+                stopCamera();
+                cameraModal.hide();
+            } else {
+                showAlert('Failed to capture photo. Please try again.', 'danger');
+            }
+        }, 'image/jpeg', 0.9);
+    }
 
     // Make capture photo function global
     window.capturePhoto = function capturePhoto() {
