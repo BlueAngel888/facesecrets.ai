@@ -1,5 +1,10 @@
 // Ancient Wisdom Face Analysis - Frontend JavaScript
 
+// Define empty capture function that will be populated after DOM loads
+window.capturePhotoNow = function() {
+    console.log('Capture function called before DOM ready');
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     // Elements
     const uploadArea = document.getElementById('uploadArea');
@@ -15,6 +20,41 @@ document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('canvas');
     const captureBtn = document.getElementById('captureBtn');
     
+    // Global capture function for inline onclick
+    window.capturePhotoNow = function() {
+        console.log('=== CAPTURE PHOTO BUTTON CLICKED ===');
+        if (!camera || camera.readyState !== 4) {
+            console.log('Camera not ready:', camera ? camera.readyState : 'no camera');
+            showAlert('Camera not ready yet. Please wait a moment.', 'warning');
+            return;
+        }
+        
+        console.log('Taking photo now...');
+        const context = canvas.getContext('2d');
+        canvas.width = camera.videoWidth;
+        canvas.height = camera.videoHeight;
+        
+        // Flip the image back to normal
+        context.save();
+        context.scale(-1, 1);
+        context.drawImage(camera, -camera.videoWidth, 0);
+        context.restore();
+        
+        canvas.toBlob(blob => {
+            console.log('Blob created:', blob ? blob.size : 'failed');
+            if (blob && blob.size > 0) {
+                const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+                handleFile(file);
+                stopCamera();
+                cameraModal.hide();
+                showAlert('Photo captured successfully!', 'success');
+            } else {
+                console.error('Failed to create blob');
+                showAlert('Failed to capture photo. Please try again.', 'danger');
+            }
+        }, 'image/jpeg', 0.9);
+    };
+    
     // Debug: Check if elements exist
     console.log('Camera elements found:', {
         cameraBtn: !!cameraBtn,
@@ -28,6 +68,41 @@ document.addEventListener('DOMContentLoaded', function() {
     let stream = null;
     let freeAnalysisEnabled = false;
     let guidanceInterval = null;
+    
+    // Override the global capture function with access to DOM elements
+    window.capturePhotoNow = function() {
+        console.log('=== CAPTURE PHOTO CLICKED ===');
+        
+        if (!camera || camera.readyState !== 4) {
+            console.log('Camera not ready. State:', camera ? camera.readyState : 'no camera');
+            alert('Camera not ready. Please wait a moment.');
+            return;
+        }
+        
+        console.log('Camera dimensions:', camera.videoWidth, 'x', camera.videoHeight);
+        
+        const context = canvas.getContext('2d');
+        canvas.width = camera.videoWidth;
+        canvas.height = camera.videoHeight;
+        
+        // Flip image back to normal (unmirror)
+        context.save();
+        context.scale(-1, 1);
+        context.drawImage(camera, -camera.videoWidth, 0);
+        context.restore();
+        
+        canvas.toBlob(function(blob) {
+            console.log('Blob result:', blob ? 'Created, size: ' + blob.size : 'Failed');
+            if (blob && blob.size > 0) {
+                const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+                handleFile(file);
+                stopCamera();
+                cameraModal.hide();
+            } else {
+                alert('Failed to capture photo. Please try again.');
+            }
+        }, 'image/jpeg', 0.9);
+    };
     let lastGuidanceMessage = '';
     let faceDetectionModel = null;
 
@@ -445,44 +520,9 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function capturePhoto() {
-        console.log('Capturing photo...');
-        console.log('Camera ready state:', camera.readyState);
-        console.log('Video dimensions:', camera.videoWidth, 'x', camera.videoHeight);
-        
-        if (camera.readyState !== 4) {
-            showAlert('Camera not ready yet. Please wait a moment.', 'warning');
-            return;
-        }
-        
-        const context = canvas.getContext('2d');
-        canvas.width = camera.videoWidth;
-        canvas.height = camera.videoHeight;
-        
-        // Flip the image back to normal when capturing (since video is mirrored)
-        context.save();
-        context.scale(-1, 1);
-        context.drawImage(camera, -camera.videoWidth, 0);
-        context.restore();
-        
-        canvas.toBlob(blob => {
-            console.log('Photo captured, blob size:', blob.size);
-            if (blob && blob.size > 0) {
-                const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
-                handleFile(file);
-                stopCamera();
-                cameraModal.hide();
-            } else {
-                console.error('Failed to create blob from canvas');
-                showAlert('Failed to capture photo. Please try again.', 'danger');
-            }
-        }, 'image/jpeg', 0.9);
+        console.log('Capturing photo from capturePhoto function...');
+        window.capturePhotoNow();
     }
-    
-    // Global function for inline onclick
-    window.capturePhotoNow = function() {
-        console.log('Capture button clicked via inline handler');
-        capturePhoto();
-    };
 
     // Global click handler for capture button
     document.addEventListener('click', function(e) {
