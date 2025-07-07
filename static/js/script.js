@@ -59,6 +59,13 @@ document.addEventListener('DOMContentLoaded', function() {
         canvas: !!canvas,
         captureBtn: !!captureBtn
     });
+    
+    // Make sure capture button stays visible
+    if (captureBtn) {
+        captureBtn.style.display = 'inline-block !important';
+        captureBtn.style.visibility = 'visible !important';
+        console.log('Capture button forced visible');
+    }
     const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
     
     let uploadedFile = false;
