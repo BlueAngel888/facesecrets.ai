@@ -223,12 +223,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         guidanceOverlay.style.display = 'block';
-        guidanceText.textContent = 'Position your face in the center of the frame';
+        guidanceText.textContent = '📸 Ready to capture! Just position yourself and click the button';
 
-        // Start guidance analysis every 500ms
+        // Start guidance analysis every 1000ms (less frequent for better performance)
         guidanceInterval = setInterval(() => {
             analyzeFacePosition();
-        }, 500);
+        }, 1000);
     }
 
     function stopFacialGuidance() {
@@ -309,46 +309,41 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function detectFaceRegion(data, width, height) {
-        // Simple skin tone detection
-        let skinPixels = 0;
-        let totalPixels = 0;
-        let faceX = 0, faceY = 0;
+        // Very relaxed "face" detection - mostly based on brightness in center area
+        let centerPixels = 0;
+        let brightPixels = 0;
+        let faceX = width / 2;
+        let faceY = height / 2;
         
-        for (let y = 0; y < height; y += 4) { // Sample every 4th pixel for performance
-            for (let x = 0; x < width; x += 4) {
+        // Check center area only (much simpler and faster)
+        const centerStartX = width * 0.3;
+        const centerEndX = width * 0.7;
+        const centerStartY = height * 0.3;
+        const centerEndY = height * 0.7;
+        
+        for (let y = centerStartY; y < centerEndY; y += 8) { // Even less frequent sampling
+            for (let x = centerStartX; x < centerEndX; x += 8) {
                 const index = (y * width + x) * 4;
                 const r = data[index];
                 const g = data[index + 1];
                 const b = data[index + 2];
                 
-                // Simple skin tone detection
-                if (isSkinTone(r, g, b)) {
-                    skinPixels++;
-                    faceX += x;
-                    faceY += y;
+                const brightness = (r + g + b) / 3;
+                if (brightness > 60) { // Just check if there's reasonable brightness
+                    brightPixels++;
                 }
-                totalPixels++;
+                centerPixels++;
             }
         }
         
-        const skinRatio = skinPixels / totalPixels;
-        const detected = skinRatio > 0.05; // At least 5% skin tone pixels
+        // Very lenient detection - if there's any reasonable content in center, consider it detected
+        const detected = brightPixels > centerPixels * 0.3; // 30% of center area has some brightness
         
         return {
             detected: detected,
-            position: detected ? {
-                x: faceX / skinPixels,
-                y: faceY / skinPixels
-            } : { x: width/2, y: height/2 },
-            size: skinPixels
+            position: { x: faceX, y: faceY }, // Always use center
+            size: brightPixels * 10 // Fake size that's always reasonable
         };
-    }
-
-    function isSkinTone(r, g, b) {
-        // Enhanced skin tone detection algorithm
-        return (r > 95 && g > 40 && b > 20 && 
-                Math.max(r, g, b) - Math.min(r, g, b) > 15 &&
-                Math.abs(r - g) > 15 && r > g && r > b);
     }
 
     function updateGuidanceMessage(analysis) {
@@ -363,52 +358,23 @@ document.addEventListener('DOMContentLoaded', function() {
         let message = '';
         let isReadyToCapture = true;
         
-        // Update quality indicators
-        updateQualityIndicator(lightingIndicator, 'lightbulb', analysis.brightness >= 80 && analysis.brightness <= 200);
-        updateQualityIndicator(faceIndicator, 'user', analysis.faceDetected);
-        updateQualityIndicator(sizeIndicator, 'expand-arrows-alt', analysis.faceSize >= 500 && analysis.faceSize <= 2000);
+        // Much more relaxed quality indicators - allow almost everything
+        updateQualityIndicator(lightingIndicator, 'lightbulb', analysis.brightness >= 50); // More lenient lighting
+        updateQualityIndicator(faceIndicator, 'user', analysis.faceDetected || analysis.brightness > 60); // Allow without strict face detection
+        updateQualityIndicator(sizeIndicator, 'expand-arrows-alt', true); // Always allow any distance
         
-        // Lighting guidance
-        if (analysis.brightness < 80) {
-            message = '💡 Move to a brighter area or turn on more lights';
+        // Very relaxed guidance - only block in extreme cases
+        if (analysis.brightness < 30) {
+            message = '💡 Need a bit more light to see you clearly';
             isReadyToCapture = false;
-        } else if (analysis.brightness > 200) {
-            message = '☀️ Too bright! Move away from direct light or reduce lighting';
-            isReadyToCapture = false;
-        }
-        
-        // Face detection guidance
-        else if (!analysis.faceDetected) {
-            message = '👤 Please position your face in the center of the frame';
-            isReadyToCapture = false;
-        }
-        
-        // Face positioning guidance
-        else if (analysis.faceDetected) {
-            const centerX = camera.videoWidth / 2;
-            const centerY = camera.videoHeight / 2;
-            const faceX = analysis.facePosition.x;
-            const faceY = analysis.facePosition.y;
-            
-            const offsetX = Math.abs(faceX - centerX);
-            const offsetY = Math.abs(faceY - centerY);
-            
-            if (offsetX > camera.videoWidth * 0.15) {
-                message = faceX < centerX ? '⬅️ Move slightly to the left' : '➡️ Move slightly to the right';
-                isReadyToCapture = false;
-            } else if (offsetY > camera.videoHeight * 0.15) {
-                message = faceY < centerY ? '⬆️ Move slightly up' : '⬇️ Move slightly down';
-                isReadyToCapture = false;
-            } else if (analysis.faceSize < 500) {
-                message = '🔍 Move closer to the camera';
-                isReadyToCapture = false;
-            } else if (analysis.faceSize > 2000) {
-                message = '📏 Move back a little - you\'re too close';
-                isReadyToCapture = false;
+        } else {
+            // Always ready to capture in normal conditions
+            if (analysis.faceDetected) {
+                message = '✅ Looking good! Ready to capture';
             } else {
-                message = '✅ Perfect! Ready to capture';
-                isReadyToCapture = true;
+                message = '📸 Position yourself and capture when ready';
             }
+            isReadyToCapture = true;
         }
         
         // Update guidance only if message changed
@@ -423,12 +389,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     captureBtn.classList.remove('btn-warning');
                     captureBtn.classList.add('btn-success');
                     captureBtn.style.animation = 'pulse 1s infinite';
-                    if (captureText) captureText.textContent = 'Capture Perfect Shot!';
+                    if (captureText) captureText.textContent = 'Capture Photo';
                 } else {
                     captureBtn.classList.remove('btn-success');
                     captureBtn.classList.add('btn-warning');
                     captureBtn.style.animation = 'none';
-                    if (captureText) captureText.textContent = 'Adjust Position';
+                    if (captureText) captureText.textContent = 'Need More Light';
                 }
             }
         }
