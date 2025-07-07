@@ -218,14 +218,16 @@ def free_analysis():
         session['pdf_file'] = pdf_path
         session['analysis_complete'] = True
         
-        # Return direct redirect to results page
+        # Return direct redirect to results page with PDF path
         session['analysis_result'] = analysis_result
         session['show_download'] = True
+        session['pdf_path'] = pdf_path  # Store full path
         
         return jsonify({
             'success': True,
             'message': 'Free analysis complete! Your report is ready.',
-            'redirect_url': '/success'
+            'redirect_url': '/success',
+            'pdf_path': pdf_path  # Send path to frontend for backup
         })
     
     except Exception as e:
@@ -343,14 +345,27 @@ def success():
                              translations=translations,
                              language=language)
 
-@app.route('/download-pdf')
+@app.route('/download-pdf', methods=['GET', 'POST'])
 def download_pdf():
-    pdf_path = session.get('pdf_file')
+    # Try to get PDF path from session first
+    pdf_path = session.get('pdf_file') or session.get('pdf_path')
+    
+    # If POST request with path parameter (backup method)
+    if request.method == 'POST':
+        data = request.get_json()
+        if data and 'pdf_path' in data:
+            pdf_path = data['pdf_path']
+    
+    logging.debug(f"Download PDF attempt - Path: {pdf_path}")
+    logging.debug(f"Session contents: {dict(session)}")
+    
     if not pdf_path:
-        return redirect(url_for('index'))
+        logging.error("No pdf_path found")
+        return jsonify({'error': 'No PDF file available'}), 404
     
     if not os.path.exists(pdf_path):
-        return redirect(url_for('index'))
+        logging.error(f"PDF file does not exist: {pdf_path}")
+        return jsonify({'error': 'PDF file not found'}), 404
     
     try:
         # Send file and then clean up

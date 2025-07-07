@@ -361,6 +361,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadingModal.hide();
                 if (data.success) {
                     showAlert(data.message, 'success');
+                    // Store PDF path for backup download
+                    if (data.pdf_path) {
+                        localStorage.setItem('pdf_path', data.pdf_path);
+                    }
                     // Redirect to results page
                     setTimeout(() => {
                         window.location.href = data.redirect_url || '/success';
