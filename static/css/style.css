@@ -405,6 +405,13 @@ body {
     z-index: 10;
 }
 
+/* Ensure capture button is always clickable */
+#captureBtn {
+    pointer-events: auto !important;
+    position: relative;
+    z-index: 999;
+}
+
 .face-guide-circle {
     position: absolute;
     top: 50%;

@@ -423,15 +423,25 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Direct capture button event listener
     function setupCaptureButton() {
-        const captureButton = document.getElementById('captureBtn');
-        if (captureButton) {
-            captureButton.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Capture button clicked directly');
-                capturePhoto();
-            });
-        }
+        // Wait a bit for modal to fully render
+        setTimeout(() => {
+            const captureButton = document.getElementById('captureBtn');
+            console.log('Setting up capture button:', !!captureButton);
+            if (captureButton) {
+                // Remove any existing listeners first
+                captureButton.replaceWith(captureButton.cloneNode(true));
+                const newCaptureButton = document.getElementById('captureBtn');
+                
+                newCaptureButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('Capture button clicked directly');
+                    capturePhoto();
+                }, { once: false });
+                
+                console.log('Capture button event listener added');
+            }
+        }, 500);
     }
 
     function capturePhoto() {
@@ -468,13 +478,22 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 'image/jpeg', 0.9);
     }
 
-    // Also keep the document click listener as backup
+    // Global click handler for capture button
     document.addEventListener('click', function(e) {
-        if (e.target && (e.target.id === 'captureBtn' || e.target.closest('#captureBtn'))) {
-            console.log('Backup capture button clicked');
+        console.log('Global click on:', e.target.tagName, e.target.id, e.target.className);
+        
+        // Check if it's the capture button or its children
+        if (e.target.id === 'captureBtn' || 
+            e.target.closest('#captureBtn') || 
+            (e.target.tagName === 'BUTTON' && e.target.textContent.includes('Capture')) ||
+            (e.target.tagName === 'SPAN' && e.target.textContent.includes('Capture'))) {
+            
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Capture button detected via global handler');
             capturePhoto();
         }
-    });
+    }, true); // Use capture phase to catch events early
 
     // Stop camera when modal is hidden
     document.getElementById('cameraModal').addEventListener('hidden.bs.modal', () => {
