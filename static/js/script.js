@@ -244,8 +244,8 @@ document.addEventListener('DOMContentLoaded', function() {
         console.log('Capture button setup complete');
     }
     
-    // Take photo function as per specification
-    function takePhoto() {
+    // Make takePhoto globally accessible
+    window.takePhoto = function() {
         if (!camera || camera.readyState !== 4) {
             console.error('Camera not ready');
             showAlert('Camera not ready. Please wait a moment.', 'warning');
