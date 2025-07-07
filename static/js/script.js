@@ -361,10 +361,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadingModal.hide();
                 if (data.success) {
                     showAlert(data.message, 'success');
-                    // Redirect to download
+                    // Redirect to results page
                     setTimeout(() => {
-                        window.location.href = data.download_url;
-                    }, 2000);
+                        window.location.href = data.redirect_url || '/success';
+                    }, 1500);
                 } else {
                     showAlert(data.error || 'Analysis failed', 'danger');
                 }

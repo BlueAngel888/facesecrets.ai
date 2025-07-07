@@ -218,10 +218,14 @@ def free_analysis():
         session['pdf_file'] = pdf_path
         session['analysis_complete'] = True
         
+        # Return direct redirect to results page
+        session['analysis_result'] = analysis_result
+        session['show_download'] = True
+        
         return jsonify({
             'success': True,
             'message': 'Free analysis complete! Your report is ready.',
-            'download_url': '/download-pdf'
+            'redirect_url': '/success'
         })
     
     except Exception as e:
@@ -268,9 +272,21 @@ def create_checkout_session():
 
 @app.route('/success')
 def success():
-    session_id = request.args.get('session_id')
     language = session.get('language', 'en')
+    translations = get_translations(language)
     
+    # Check for free analysis completion
+    if session.get('show_download') and session.get('analysis_result'):
+        analysis_result = session.get('analysis_result')
+        return render_template('success.html', 
+                             analysis=analysis_result, 
+                             pdf_ready=True,
+                             free_analysis=True,
+                             translations=translations,
+                             language=language)
+    
+    # Handle Stripe payment success
+    session_id = request.args.get('session_id')
     if not session_id or session_id != session.get('stripe_session_id'):
         return redirect(url_for('index'))
     
@@ -329,11 +345,10 @@ def success():
 
 @app.route('/download-pdf')
 def download_pdf():
-    pdf_filename = session.get('pdf_file')
-    if not pdf_filename:
+    pdf_path = session.get('pdf_file')
+    if not pdf_path:
         return redirect(url_for('index'))
     
-    pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], pdf_filename)
     if not os.path.exists(pdf_path):
         return redirect(url_for('index'))
     
