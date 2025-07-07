@@ -194,6 +194,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 camera.play();
                 // Start facial guidance after camera is ready
                 startFacialGuidance();
+                // Setup capture button event listener
+                setupCaptureButton();
             };
             
             cameraModal.show();
@@ -419,41 +421,58 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Capture photo - Use event delegation to handle dynamically loaded content
-    document.addEventListener('click', function(e) {
-        console.log('Document click detected on:', e.target.id, e.target.className);
-        if (e.target && (e.target.id === 'captureBtn' || e.target.closest('#captureBtn'))) {
-            console.log('Capture button clicked');
-            console.log('Camera ready state:', camera.readyState);
-            console.log('Video dimensions:', camera.videoWidth, 'x', camera.videoHeight);
-            
-            if (camera.readyState !== 4) {
-                showAlert('Camera not ready yet. Please wait a moment.', 'warning');
-                return;
+    // Direct capture button event listener
+    function setupCaptureButton() {
+        const captureButton = document.getElementById('captureBtn');
+        if (captureButton) {
+            captureButton.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Capture button clicked directly');
+                capturePhoto();
+            });
+        }
+    }
+
+    function capturePhoto() {
+        console.log('Capturing photo...');
+        console.log('Camera ready state:', camera.readyState);
+        console.log('Video dimensions:', camera.videoWidth, 'x', camera.videoHeight);
+        
+        if (camera.readyState !== 4) {
+            showAlert('Camera not ready yet. Please wait a moment.', 'warning');
+            return;
+        }
+        
+        const context = canvas.getContext('2d');
+        canvas.width = camera.videoWidth;
+        canvas.height = camera.videoHeight;
+        
+        // Flip the image back to normal when capturing (since video is mirrored)
+        context.save();
+        context.scale(-1, 1);
+        context.drawImage(camera, -camera.videoWidth, 0);
+        context.restore();
+        
+        canvas.toBlob(blob => {
+            console.log('Photo captured, blob size:', blob.size);
+            if (blob && blob.size > 0) {
+                const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+                handleFile(file);
+                stopCamera();
+                cameraModal.hide();
+            } else {
+                console.error('Failed to create blob from canvas');
+                showAlert('Failed to capture photo. Please try again.', 'danger');
             }
-            
-            const context = canvas.getContext('2d');
-            canvas.width = camera.videoWidth;
-            canvas.height = camera.videoHeight;
-            
-            // Flip the image back to normal when capturing (since video is mirrored)
-            context.save();
-            context.scale(-1, 1);
-            context.drawImage(camera, -camera.videoWidth, 0);
-            context.restore();
-            
-            canvas.toBlob(blob => {
-                console.log('Photo captured, blob size:', blob.size);
-                if (blob && blob.size > 0) {
-                    const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
-                    handleFile(file);
-                    stopCamera();
-                    cameraModal.hide();
-                } else {
-                    console.error('Failed to create blob from canvas');
-                    showAlert('Failed to capture photo. Please try again.', 'danger');
-                }
-            }, 'image/jpeg', 0.9);
+        }, 'image/jpeg', 0.9);
+    }
+
+    // Also keep the document click listener as backup
+    document.addEventListener('click', function(e) {
+        if (e.target && (e.target.id === 'captureBtn' || e.target.closest('#captureBtn'))) {
+            console.log('Backup capture button clicked');
+            capturePhoto();
         }
     });
 
