@@ -1,0 +1,57 @@
+📂 STRUCTURĂ PROIECT
+- index.html
+- public/
+    └─ camera.js
+- server.py  (FastAPI)
+
+🎯 OBIECTIV
+Construiește o funcție **Take Photo** pentru site-ul FaceSecrets.ai.
+• Pornește camera (laptop, webcam externă sau telefon).  
+• Permite utilizatorului să facă o poză.  
+• Afișează previzualizarea imaginii.  
+• Încarcă poza automat la endpoint-ul backend **/analyze** pentru procesarea facială.  
+• Oprește camera după captură.
+
+🛠️ CERINȚE FRONTEND
+1. **index.html**  
+   - Buton „Deschide Camera”  
+   - Video tag pentru flux live (`<video autoplay playsinline muted>`)  
+   - Buton „Fă Poză” → ascuns până se permite camera.  
+   - Canvas invizibil pentru a extrage frame-ul.  
+   - Previzualizare `<img id="preview">` cu poza capturată.  
+2. **camera.js**  
+   - Folosește `navigator.mediaDevices.getUserMedia({ video: true })`.  
+   - La click pe „Fă Poză”:  
+     1. Desenează frame-ul video pe canvas.  
+     2. Convertește canvas → Blob (`canvas.toBlob`) sau DataURL.  
+     3. Trimite `fetch('/analyze', { method:'POST', body: FormData })`.  
+   - După POST, primește `analysis_id` și redirecționează la `/result/{analysis_id}`.  
+   - Tratare erori permisiuni cameră.  
+   - Oprește fluxul video (`stream.getTracks().forEach(t=>t.stop())`) după captură.
+
+🛠️ CERINȚE BACKEND (server.py)
+- FastAPI + uvicorn.
+- Endpoint `POST /analyze`:
+    * Acceptă `file` (imagem/jpeg, png).  
+    * Salvează fișierul sau îl trimite la funcția GPT Vision / FaceSecrets analyzer.  
+    * Returnează JSON `{ "analysis_id": "<uuid>" }`.
+- Endpoint `GET /result/{analysis_id}`:  
+    * Returnează pagina cu raportul AI (mock OK).
+
+💡 DETALII IMPLEMENTARE
+- Separa logică: front (static) / api (python).  
+- Folosește `async def analyze(file: UploadFile = File(...))`.  
+- Acceptă CORS pentru apeluri front-back în Replit.  
+- Stilează minimal: Tailwind CDN.
+
+🔐 Securitate minimă
+- Limitează tip MIME și dimensiune < 10 MB.  
+- Returnează 415 pentru formate non-imagine.
+
+⚡ EXTRA
+- Adaugă loader „Analizăm fotografia…” după upload.  
+- Mobil first: elemente flex-col, video 100 %.
+
+👩‍💻 PRODU OUTPUT-UL FINAL
+• Cod complet pentru `index.html`, `public/camera.js`, `server.py`.  
+• Instrucțiuni de rulare (`pip install fastapi uvicorn`, `uvicorn server:app --reload`).  

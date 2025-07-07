@@ -213,59 +213,113 @@ document.addEventListener('DOMContentLoaded', function() {
         startCamera();
     });
     
-    // Simple capture button click handler
-    document.addEventListener('click', function(e) {
-        const target = e.target;
-        const captureBtn = target.closest('#captureBtn');
-        
-        if (captureBtn || target.id === 'captureBtn') {
-            console.log('Capture button clicked!');
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // Call capture function directly
-            if (camera && camera.readyState === 4) {
-                capturePhotoNow();
-            } else {
-                showAlert('Camera not ready. Please wait a moment.', 'warning');
-            }
-        }
+    // Camera capture implementation following specification
+    
+    // Setup camera modal shown event
+    document.getElementById('cameraModal').addEventListener('shown.bs.modal', function() {
+        console.log('Camera modal opened, setting up capture button');
+        setupCaptureButton();
     });
     
-    // Function to capture photo
-    function capturePhotoNow() {
-        console.log('Capturing photo now...');
+    // Setup capture button when modal is ready
+    function setupCaptureButton() {
+        const captureBtn = document.getElementById('captureBtn');
+        if (!captureBtn) {
+            console.error('Capture button not found');
+            return;
+        }
         
+        // Clear any existing listeners
+        const newBtn = captureBtn.cloneNode(true);
+        captureBtn.parentNode.replaceChild(newBtn, captureBtn);
+        
+        // Add new click handler
+        newBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Capture button clicked - taking photo');
+            takePhoto();
+        });
+        
+        console.log('Capture button setup complete');
+    }
+    
+    // Take photo function as per specification
+    function takePhoto() {
+        if (!camera || camera.readyState !== 4) {
+            console.error('Camera not ready');
+            showAlert('Camera not ready. Please wait a moment.', 'warning');
+            return;
+        }
+        
+        console.log('Taking photo...');
+        
+        // Get canvas element
         const canvas = document.getElementById('canvas');
+        if (!canvas) {
+            console.error('Canvas element not found');
+            return;
+        }
+        
         const context = canvas.getContext('2d');
         
-        // Set canvas size
+        // Set canvas dimensions to match video
         canvas.width = camera.videoWidth;
         canvas.height = camera.videoHeight;
         
-        // Draw video frame (unmirrored)
+        console.log(`Canvas size: ${canvas.width}x${canvas.height}`);
+        
+        // Draw current video frame to canvas (flip horizontally to unmirror)
         context.save();
         context.scale(-1, 1);
         context.drawImage(camera, -canvas.width, 0, canvas.width, canvas.height);
         context.restore();
         
-        // Convert to blob
+        // Convert canvas to blob
         canvas.toBlob(function(blob) {
-            if (blob) {
-                console.log('Photo captured successfully, size:', blob.size);
-                
-                // Create file and handle it
-                const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
-                handleFile(file);
-                
-                // Close camera
-                stopCamera();
-                cameraModal.hide();
-            } else {
+            if (!blob) {
+                console.error('Failed to create blob from canvas');
                 showAlert('Failed to capture photo. Please try again.', 'danger');
+                return;
             }
-        }, 'image/jpeg', 0.9);
+            
+            console.log(`Photo captured: ${blob.size} bytes`);
+            
+            // Create File object
+            const file = new File([blob], 'camera-photo.jpg', {
+                type: 'image/jpeg',
+                lastModified: Date.now()
+            });
+            
+            // Use existing handleFile function to upload
+            handleFile(file);
+            
+            // Stop camera stream as per specification
+            if (stream) {
+                stream.getTracks().forEach(track => {
+                    track.stop();
+                    console.log('Camera track stopped:', track.kind);
+                });
+            }
+            
+            // Close modal
+            cameraModal.hide();
+            
+            // Show success message
+            showAlert('Photo captured successfully!', 'success');
+            
+        }, 'image/jpeg', 0.95); // High quality JPEG
     }
+    
+    // Also add a global click listener as fallback
+    document.addEventListener('click', function(e) {
+        if (e.target.id === 'captureBtn' || e.target.closest('#captureBtn')) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Capture button clicked via global listener');
+            takePhoto();
+        }
+    });
 
     // Make capture photo function global
     window.capturePhoto = function capturePhoto() {
