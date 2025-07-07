@@ -206,29 +206,31 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Capture photo
-    captureBtn.addEventListener('click', () => {
-        console.log('Capture button clicked');
-        console.log('Camera ready state:', camera.readyState);
-        console.log('Video dimensions:', camera.videoWidth, 'x', camera.videoHeight);
-        
-        if (camera.readyState !== 4) {
-            showAlert('Camera not ready yet. Please wait a moment.', 'warning');
-            return;
+    // Capture photo - Use event delegation to handle dynamically loaded content
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.id === 'captureBtn') {
+            console.log('Capture button clicked');
+            console.log('Camera ready state:', camera.readyState);
+            console.log('Video dimensions:', camera.videoWidth, 'x', camera.videoHeight);
+            
+            if (camera.readyState !== 4) {
+                showAlert('Camera not ready yet. Please wait a moment.', 'warning');
+                return;
+            }
+            
+            const context = canvas.getContext('2d');
+            canvas.width = camera.videoWidth;
+            canvas.height = camera.videoHeight;
+            context.drawImage(camera, 0, 0);
+            
+            canvas.toBlob(blob => {
+                console.log('Photo captured, blob size:', blob.size);
+                const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+                handleFile(file);
+                stopCamera();
+                cameraModal.hide();
+            }, 'image/jpeg', 0.9);
         }
-        
-        const context = canvas.getContext('2d');
-        canvas.width = camera.videoWidth;
-        canvas.height = camera.videoHeight;
-        context.drawImage(camera, 0, 0);
-        
-        canvas.toBlob(blob => {
-            console.log('Photo captured, blob size:', blob.size);
-            const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
-            handleFile(file);
-            stopCamera();
-            cameraModal.hide();
-        }, 'image/jpeg', 0.9);
     });
 
     // Stop camera when modal is hidden
