@@ -421,7 +421,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Capture photo - Use event delegation to handle dynamically loaded content
     document.addEventListener('click', function(e) {
-        if (e.target && e.target.id === 'captureBtn') {
+        console.log('Document click detected on:', e.target.id, e.target.className);
+        if (e.target && (e.target.id === 'captureBtn' || e.target.closest('#captureBtn'))) {
             console.log('Capture button clicked');
             console.log('Camera ready state:', camera.readyState);
             console.log('Video dimensions:', camera.videoWidth, 'x', camera.videoHeight);
@@ -443,10 +444,15 @@ document.addEventListener('DOMContentLoaded', function() {
             
             canvas.toBlob(blob => {
                 console.log('Photo captured, blob size:', blob.size);
-                const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
-                handleFile(file);
-                stopCamera();
-                cameraModal.hide();
+                if (blob && blob.size > 0) {
+                    const file = new File([blob], 'camera-capture.jpg', { type: 'image/jpeg' });
+                    handleFile(file);
+                    stopCamera();
+                    cameraModal.hide();
+                } else {
+                    console.error('Failed to create blob from canvas');
+                    showAlert('Failed to capture photo. Please try again.', 'danger');
+                }
             }, 'image/jpeg', 0.9);
         }
     });
