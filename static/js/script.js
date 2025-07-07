@@ -216,23 +216,53 @@ document.addEventListener('DOMContentLoaded', function() {
     // Capture button setup - wait for modal to be shown
     document.getElementById('cameraModal').addEventListener('shown.bs.modal', () => {
         console.log('Camera modal shown, setting up capture button');
-        const captureBtn = document.getElementById('captureBtn');
-        if (captureBtn) {
-            // Remove any existing listeners
-            const newCaptureBtn = captureBtn.cloneNode(true);
-            captureBtn.parentNode.replaceChild(newCaptureBtn, captureBtn);
+        
+        // Use setTimeout to ensure DOM is fully ready
+        setTimeout(() => {
+            const captureBtn = document.getElementById('captureBtn');
+            console.log('Capture button found:', !!captureBtn);
             
-            // Add fresh listener
-            newCaptureBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                console.log('=== CAPTURE BUTTON CLICKED ===');
-                capturePhoto();
-            });
-        }
+            if (captureBtn) {
+                // Remove any existing onclick attribute
+                captureBtn.removeAttribute('onclick');
+                
+                // Add direct onclick handler
+                captureBtn.onclick = function(e) {
+                    console.log('=== CAPTURE BUTTON CLICKED (onclick) ===');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    capturePhoto();
+                    return false;
+                };
+                
+                // Also add event listener as backup
+                captureBtn.addEventListener('click', function(e) {
+                    console.log('=== CAPTURE BUTTON CLICKED (addEventListener) ===');
+                    e.preventDefault();
+                    e.stopPropagation();
+                    capturePhoto();
+                }, false);
+                
+                console.log('Capture button handlers attached');
+            } else {
+                console.error('Capture button not found!');
+            }
+        }, 300);
     });
     
-    // New capture photo function
-    function capturePhoto() {
+    // Global click handler to catch capture button clicks
+    document.addEventListener('click', function(e) {
+        // Check if clicked element is capture button or its child
+        if (e.target.id === 'captureBtn' || e.target.closest('#captureBtn')) {
+            console.log('=== CAPTURE BUTTON CLICKED (global) ===');
+            e.preventDefault();
+            e.stopPropagation();
+            capturePhoto();
+        }
+    }, true); // Use capture phase
+
+    // Make capture photo function global
+    window.capturePhoto = function capturePhoto() {
         console.log('Starting photo capture...');
         
         if (!camera || camera.readyState !== 4) {

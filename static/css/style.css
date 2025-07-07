@@ -411,6 +411,24 @@ body {
     position: relative;
     z-index: 9999 !important;
     cursor: pointer !important;
+    display: inline-block !important;
+}
+
+/* Make sure button is above everything in modal */
+.modal-body #captureBtn {
+    position: relative;
+    z-index: 10000 !important;
+}
+
+/* Fix any overlay issues */
+#cameraModal .modal-content {
+    position: relative;
+    z-index: 1060;
+}
+
+#cameraModal .modal-body {
+    position: relative;
+    z-index: 1061;
 }
 
 /* Fix modal z-index issues */
