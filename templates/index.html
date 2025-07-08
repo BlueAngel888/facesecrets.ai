@@ -356,18 +356,18 @@
     <div class="sticky-payment-bar">
         <div class="container">
             <div class="row align-items-center">
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <strong>{{ translations.price_text }}</strong>
                 </div>
-                <div class="col-md-3">
-                    <div class="promo-section">
-                        <input type="text" class="form-control form-control-sm" id="promoCode" placeholder="{{ translations.promo_code_placeholder }}" style="font-size: 12px;">
-                        <button class="btn btn-outline-light btn-sm mt-1" id="checkPromoBtn" style="font-size: 11px;">
+                <div class="col-md-4">
+                    <div class="d-flex gap-2 align-items-center">
+                        <input type="text" class="form-control form-control-sm" id="promoCode" placeholder="{{ translations.promo_code_placeholder }}" style="font-size: 12px; max-width: 120px;">
+                        <button class="btn btn-outline-light btn-sm" id="checkPromoBtn" style="font-size: 11px; white-space: nowrap;">
                             <i class="fas fa-gift"></i> {{ translations.check_promo }}
                         </button>
                     </div>
                 </div>
-                <div class="col-md-3 text-end">
+                <div class="col-md-4 text-end">
                     <button class="btn btn-payment" id="paymentBtn" disabled>
                         <i class="fas fa-lock"></i> Secure Payment
                     </button>
