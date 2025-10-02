@@ -8,7 +8,13 @@ from openai import OpenAI
 logging.basicConfig(level=logging.DEBUG)
 
 # Initialize OpenAI client
-client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+api_key = os.environ.get("OPENAI_API_KEY")
+if not api_key:
+    logging.error("OPENAI_API_KEY environment variable is not set!")
+else:
+    logging.info(f"OpenAI API key found (length: {len(api_key)})")
+    
+client = OpenAI(api_key=api_key)
 
 def encode_image(image_path):
     """Encode image to base64"""
@@ -145,6 +151,7 @@ Provide personalized advice for:
 """
         
         # Make API call
+        logging.info("Making OpenAI API call...")
         response = client.chat.completions.create(
             model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
             messages=[
@@ -168,7 +175,10 @@ Provide personalized advice for:
             max_tokens=4000
         )
         
+        logging.info(f"OpenAI API response received. Choices: {len(response.choices)}")
         response_content = response.choices[0].message.content
+        logging.info(f"Response content type: {type(response_content)}, Length: {len(response_content) if response_content else 0}")
+        
         if response_content and isinstance(response_content, str):
             try:
                 analysis_result = json.loads(response_content)
