@@ -176,10 +176,26 @@ Provide personalized advice for:
         )
         
         logging.info(f"OpenAI API response received. Choices: {len(response.choices)}")
-        response_content = response.choices[0].message.content
+        
+        # Debug: Log the full response structure
+        choice = response.choices[0]
+        logging.info(f"Choice finish_reason: {choice.finish_reason}")
+        logging.info(f"Message role: {choice.message.role}")
+        
+        response_content = choice.message.content
         logging.info(f"Response content type: {type(response_content)}, Length: {len(response_content) if response_content else 0}")
         
-        if response_content and isinstance(response_content, str):
+        # Check if content is None or empty
+        if not response_content:
+            error_msg = f"OpenAI returned empty content. Finish reason: {choice.finish_reason}"
+            logging.error(error_msg)
+            # Check if there's a refusal
+            if hasattr(choice.message, 'refusal') and choice.message.refusal:
+                error_msg = f"OpenAI refused: {choice.message.refusal}"
+                logging.error(error_msg)
+            raise ValueError(error_msg)
+        
+        if isinstance(response_content, str):
             try:
                 analysis_result = json.loads(response_content)
             except json.JSONDecodeError as json_error:
