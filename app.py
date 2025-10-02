@@ -203,10 +203,13 @@ def free_analysis():
             return jsonify({'error': 'No face detected in image'}), 400
         
         # Perform AI analysis
+        logging.info(f"Starting AI analysis for file: {filepath}, language: {language}")
         analysis_result = analyze_face_with_ai(filepath, language)
         
         if 'error' in analysis_result:
-            return jsonify({'error': 'Analysis failed'}), 500
+            error_msg = analysis_result.get('message', 'Unknown error')
+            logging.error(f"AI analysis returned error: {error_msg}")
+            return jsonify({'error': error_msg}), 500
         
         # Generate PDF
         pdf_filename = f"analysis_{uuid.uuid4().hex}.pdf"
@@ -316,7 +319,18 @@ def success():
             return render_template('success.html', error="No face detected in the image", language=language)
         
         # Analyze with AI
+        logging.info(f"Starting paid AI analysis for file: {filepath}, language: {language}")
         analysis_result = analyze_face_with_ai(filepath, language)
+        
+        if 'error' in analysis_result:
+            error_msg = analysis_result.get('message', 'Unknown error')
+            logging.error(f"AI analysis returned error: {error_msg}")
+            os.remove(filepath)
+            translations = get_translations(language)
+            return render_template('success.html', 
+                                 error=error_msg,
+                                 translations=translations,
+                                 language=language)
         
         # Generate PDF
         pdf_filename = f"analysis_{uuid.uuid4().hex}.pdf"
