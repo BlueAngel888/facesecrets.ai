@@ -5,14 +5,14 @@ import os
 from openai import OpenAI
 
 # Setup logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 # Initialize OpenAI client
 api_key = os.environ.get("OPENAI_API_KEY")
 if not api_key:
     logging.error("OPENAI_API_KEY environment variable is not set!")
 else:
-    logging.info(f"OpenAI API key found (length: {len(api_key)})")
+    logging.info("OpenAI API credentials are configured")
     
 client = OpenAI(api_key=api_key)
 
@@ -21,7 +21,7 @@ def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode('utf-8')
 
-def analyze_face_with_ai(image_path, language='en'):
+def analyze_face_with_ai(image_path, language='en', face_data=None):
     """
     Comprehensive face analysis using GPT-4o with advanced morphopsychology for all languages
     """
@@ -83,7 +83,11 @@ def analyze_face_with_ai(image_path, language='en'):
         prompt = f"""
 {lang_config['title']}
 
-Analyze this person's face using advanced morphopsychology and provide a comprehensive life path analysis.
+Analyze only what is visibly observable in this face photograph. Do not infer personality,
+intelligence, morality, mental health, sexuality, wealth, destiny, ethnicity, medical conditions,
+or other sensitive traits from appearance. Separate observations from cultural interpretation.
+Traditional systems are non-scientific cultural frameworks and must be phrased as possibilities
+for reflection, never facts or predictions.
 
 Use these facial analysis zones:
 - **Forehead**: thinking, intellect, relationship with authority
@@ -106,15 +110,19 @@ Integrate traditional techniques:
 - Indian Ayurveda: dosha-face connections
 - Modern Morphopsychology: contemporary psychological connections
 
-Provide personalized advice for:
-- relationships
-- career
-- self-confidence
-- emotional management
-- personal decisions
+Image preflight measurements: {json.dumps(face_data or {})}
+Describe image quality and uncertainty. If a feature is obscured, say so rather than guessing.
 
 {lang_config['response_instruction']}
 {{
+    "image_quality": {{
+        "overall": "excellent/good/limited",
+        "lighting": "observable lighting and impact",
+        "pose": "pose and impact",
+        "occlusions": "hair, glasses, crop, or none",
+        "confidence": "high/medium/low",
+        "limitations": ["specific limitation"]
+    }},
     "analiza_trasaturi": {{
         "fruntea": "detailed forehead analysis",
         "sprancenele": "detailed eyebrow analysis", 
@@ -129,7 +137,14 @@ Provide personalized advice for:
         "forma_generala": "detailed general shape analysis",
         "simetria": "detailed symmetry analysis"
     }},
-    "profil_psihologic": "Detailed psychological profile in 2-3 paragraphs",
+    "traditional_perspectives": {{
+        "mian_xiang": "carefully qualified cultural interpretation",
+        "greek_physiognomy": "carefully qualified historical interpretation",
+        "ayurveda": "carefully qualified traditional interpretation",
+        "ilm_al_firasa": "carefully qualified historical interpretation",
+        "morphopsychology": "carefully qualified non-scientific interpretation"
+    }},
+    "profil_psihologic": "State that psychology cannot be reliably determined from a face, then offer neutral self-reflection questions inspired by visible expression only",
     "recomandari_dezvoltare": {{
         "incredere_identitate": "recommendations for confidence and identity",
         "relatii_comunicare": "recommendations for relationships and communication",
@@ -144,7 +159,8 @@ Provide personalized advice for:
         "fourth tip for daily practices",
         "fifth tip for transformation"
     ],
-    "executive_summary": "Executive summary in 2-3 sentences about personality and development"
+    "executive_summary": "2-3 sentence summary of visible features, image confidence, and scope",
+    "disclaimer": "Clear statement that this is not identity, medical, psychological, or predictive assessment"
 }}
 
 {lang_config['closing']}
@@ -153,7 +169,7 @@ Provide personalized advice for:
         # Make API call
         logging.info("Making OpenAI API call...")
         response = client.chat.completions.create(
-            model="gpt-4o",  # the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
+            model=os.environ.get("OPENAI_VISION_MODEL", "gpt-4o"),
             messages=[
                 {
                     "role": "user",
@@ -201,20 +217,7 @@ Provide personalized advice for:
             except json.JSONDecodeError as json_error:
                 logging.error(f"JSON parsing error: {json_error}")
                 logging.error(f"Raw response: {response_content[:500]}...")
-                # Create a basic fallback analysis structure
-                return {
-                    "executive_summary": "Analysis completed but could not be properly formatted. Please try again.",
-                    "analiza_trasaturi": {
-                        "fruntea": "Analysis unavailable due to formatting error",
-                        "ochii": "Analysis unavailable due to formatting error"
-                    },
-                    "profil_psihologic": "Psychological profile could not be generated due to technical error.",
-                    "recomandari_dezvoltare": {
-                        "incredere_identitate": "Please try again for personalized recommendations"
-                    },
-                    "tips_long_term": ["Please try again for personalized tips"],
-                    "parsing_error": True
-                }
+                raise ValueError("The analysis response was not valid JSON")
         else:
             raise ValueError("Invalid or empty response from OpenAI")
         return analysis_result
@@ -223,7 +226,7 @@ Provide personalized advice for:
         logging.error(f"AI analysis error: {e}")
         return {
             "error": "Analysis failed", 
-            "message": f"Unable to complete face analysis: {str(e)}. Please try again."
+            "message": "The analysis service is temporarily unavailable. Your photo has been deleted; please try again later."
         }
 
 def translate_text(text, target_language):

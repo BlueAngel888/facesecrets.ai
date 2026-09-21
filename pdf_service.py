@@ -5,6 +5,35 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.lib.colors import HexColor
 import logging
+from html import escape
+
+SECTION_LABELS = {
+    'image_quality': 'Image Quality & Confidence',
+    'analiza_trasaturi': 'Visible Facial Features',
+    'traditional_perspectives': 'Traditional Cultural Perspectives',
+    'profil_psihologic': 'Psychology & Self-Reflection',
+    'recomandari_dezvoltare': 'Personal Development Prompts',
+    'tips_long_term': 'Long-Term Reflection Practices',
+    'disclaimer': 'Important Limitations',
+}
+
+def safe_text(value):
+    return escape(str(value))[:12000]
+
+def add_value(content, value, body_style, subheading_style, depth=0):
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if item in (None, '', [], {}):
+                continue
+            content.append(Paragraph(safe_text(key.replace('_', ' ').title()), subheading_style))
+            add_value(content, item, body_style, subheading_style, depth + 1)
+    elif isinstance(value, list):
+        for index, item in enumerate(value, 1):
+            content.append(Paragraph(f"<b>{index}.</b> {safe_text(item)}", body_style))
+            content.append(Spacer(1, 6))
+    else:
+        content.append(Paragraph(safe_text(value), body_style))
+        content.append(Spacer(1, 8))
 
 def generate_analysis_pdf(analysis_data, output_path, language='en'):
     """
@@ -93,76 +122,18 @@ def generate_analysis_pdf(analysis_data, output_path, language='en'):
         # Executive Summary
         if 'executive_summary' in analysis_data:
             content.append(Paragraph("Executive Summary", heading_style))
-            content.append(Paragraph(analysis_data['executive_summary'], executive_style))
+            content.append(Paragraph(safe_text(analysis_data['executive_summary']), executive_style))
             content.append(Spacer(1, 15))
         
-        # Romanian morphopsychology structure
-        if 'analiza_trasaturi' in analysis_data:
-            content.append(Paragraph("🔍 Analiza Trăsăturilor Faciale", heading_style))
-            trasaturi = analysis_data['analiza_trasaturi']
-            
-            trait_names = {
-                'fruntea': 'Fruntea',
-                'sprancenele': 'Sprâncenele', 
-                'ochii': 'Ochii',
-                'nasul': 'Nasul',
-                'gura_buzele': 'Gura/Buzele',
-                'barbia_maxilarul': 'Bărbia & Maxilarul',
-                'pometii': 'Pomeții',
-                'urechile': 'Urechile',
-                'pielea_tenul': 'Pielea/Tenul',
-                'riduri_linii': 'Riduri/Linii',
-                'forma_generala': 'Forma Generală',
-                'simetria': 'Simetria'
-            }
-            
-            for key, value in trasaturi.items():
-                if value:
-                    title = trait_names.get(key, key.replace('_', ' ').title())
-                    content.append(Paragraph(f"<b>{title}:</b> {value}", body_style))
-                    content.append(Spacer(1, 8))
-            content.append(PageBreak())
-        
-        # Romanian psychological profile
-        if 'profil_psihologic' in analysis_data:
-            content.append(Paragraph("🧠 Profil Psihologic General", heading_style))
-            content.append(Paragraph(analysis_data['profil_psihologic'], body_style))
-            content.append(Spacer(1, 15))
-            content.append(PageBreak())
-        
-        # Romanian development recommendations
-        if 'recomandari_dezvoltare' in analysis_data:
-            content.append(Paragraph("🎯 Recomandări Personalizate pentru Dezvoltare", heading_style))
-            recomandari = analysis_data['recomandari_dezvoltare']
-            
-            rec_names = {
-                'incredere_identitate': 'Încredere & Identitate',
-                'relatii_comunicare': 'Relații & Comunicare',
-                'cariera_vocatie': 'Carieră & Vocație',
-                'decizii_intuitie': 'Decizii & Intuiție',
-                'sanatate_emotionala': 'Sănătate Emoțională'
-            }
-            
-            for key, value in recomandari.items():
-                if value:
-                    title = rec_names.get(key, key.replace('_', ' ').title())
-                    content.append(Paragraph(title, subheading_style))
-                    content.append(Paragraph(str(value), body_style))
-                    content.append(Spacer(1, 10))
-            content.append(PageBreak())
-        
-        # Romanian long-term tips
-        if 'tips_long_term' in analysis_data:
-            content.append(Paragraph("💡 Tips & Tricks pe Termen Lung", heading_style))
-            tips = analysis_data['tips_long_term']
-            
-            if isinstance(tips, list):
-                for i, tip in enumerate(tips, 1):
-                    content.append(Paragraph(f"<b>{i}.</b> {tip}", body_style))
-                    content.append(Spacer(1, 8))
-            else:
-                content.append(Paragraph(str(tips), body_style))
-            content.append(Spacer(1, 20))
+        for section_key in ('image_quality', 'analiza_trasaturi', 'traditional_perspectives',
+                            'profil_psihologic', 'recomandari_dezvoltare',
+                            'tips_long_term', 'disclaimer'):
+            value = analysis_data.get(section_key)
+            if value in (None, '', [], {}):
+                continue
+            content.append(Paragraph(SECTION_LABELS[section_key], heading_style))
+            add_value(content, value, body_style, subheading_style)
+            content.append(Spacer(1, 14))
         
         # 1. Personality Core
         if 'personality_core' in analysis_data:
@@ -294,8 +265,9 @@ def generate_analysis_pdf(analysis_data, output_path, language='en'):
         )
         
         content.append(Paragraph(
-            "This comprehensive analysis combines traditional physiognomy with modern psychological profiling. "
-            "Results are for personal development and entertainment purposes. Individual experiences may vary.",
+            "Traditional face-reading systems are cultural and historical frameworks, not scientific methods. "
+            "Appearance cannot reliably determine personality, health, ability, character, wealth, or destiny. "
+            "This report is for reflection and entertainment and is not medical or psychological advice.",
             disclaimer_style
         ))
         
@@ -310,11 +282,4 @@ def generate_analysis_pdf(analysis_data, output_path, language='en'):
         
     except Exception as e:
         logging.error(f"PDF generation error: {e}")
-        # Create a simple error PDF
-        doc = SimpleDocTemplate(output_path, pagesize=A4)
-        styles = getSampleStyleSheet()
-        content = [
-            Paragraph("PDF Generation Error", styles['Title']),
-            Paragraph("Unable to generate your analysis report. Please try again.", styles['Normal'])
-        ]
-        doc.build(content)
+        raise

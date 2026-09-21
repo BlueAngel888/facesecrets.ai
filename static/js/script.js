@@ -138,7 +138,11 @@ document.addEventListener('DOMContentLoaded', function() {
             method: 'POST',
             body: formData
         })
-        .then(response => response.json())
+        .then(async response => {
+            const data = await response.json().catch(() => ({ error: 'Upload failed' }));
+            if (!response.ok) throw new Error(data.error || 'Upload failed');
+            return data;
+        })
         .then(data => {
             loadingModal.hide();
             
@@ -154,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             loadingModal.hide();
             console.error('Upload error:', error);
-            showAlert('Upload failed. Please try again.', 'danger');
+            showAlert(error.message || 'Upload failed. Please try again.', 'danger');
         });
     }
 
@@ -683,10 +687,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadingModal.hide();
                 if (data.success) {
                     showAlert(data.message, 'success');
-                    // Store PDF path for backup download
-                    if (data.pdf_path) {
-                        localStorage.setItem('pdf_path', data.pdf_path);
-                    }
                     // Redirect to results page
                     setTimeout(() => {
                         window.location.href = data.redirect_url || '/success';

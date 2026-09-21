@@ -3,6 +3,7 @@ import logging
 import json
 import base64
 from flask import Flask, render_template, request, jsonify, send_file, redirect, session, url_for
+from werkzeug.exceptions import RequestEntityTooLarge
 import stripe
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
@@ -16,7 +17,7 @@ from pdf_service import generate_analysis_pdf
 from translations import get_translations, SUPPORTED_LANGUAGES
 
 # Configure logging
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
@@ -34,7 +35,8 @@ else:
     YOUR_DOMAIN = 'localhost:5000'
 
 # File upload configuration
-UPLOAD_FOLDER = 'static/uploads'
+UPLOAD_FOLDER = os.path.join(tempfile.gettempdir(), 'face-analysis-uploads')
+REPORT_FOLDER = os.path.join(tempfile.gettempdir(), 'face-analysis-reports')
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 MAX_FILE_SIZE = 16 * 1024 * 1024  # 16MB
 
@@ -43,6 +45,72 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
 # Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(REPORT_FOLDER, exist_ok=True)
+
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=bool(os.environ.get('REPLIT_DEPLOYMENT')),
+)
+
+def safe_remove(path):
+    if path:
+        try:
+            os.remove(path)
+        except FileNotFoundError:
+            pass
+        except OSError as exc:
+            logging.warning("Unable to remove temporary file: %s", exc)
+
+def uploaded_path(filename):
+    if not filename or filename != os.path.basename(filename):
+        return None
+    path = os.path.abspath(os.path.join(UPLOAD_FOLDER, filename))
+    return path if os.path.dirname(path) == os.path.abspath(UPLOAD_FOLDER) else None
+
+def report_path(report_id):
+    if not report_id or report_id != os.path.basename(report_id):
+        return None
+    path = os.path.abspath(os.path.join(REPORT_FOLDER, report_id))
+    return path if os.path.dirname(path) == os.path.abspath(REPORT_FOLDER) else None
+
+def analysis_path(report_id):
+    path = report_path(report_id)
+    return f"{path}.json" if path else None
+
+def load_analysis(report_id):
+    path = analysis_path(report_id)
+    if not path or not os.path.exists(path):
+        return None
+    with open(path, 'r', encoding='utf-8') as analysis_file:
+        return json.load(analysis_file)
+
+def clear_previous_upload():
+    safe_remove(uploaded_path(session.get('uploaded_file')))
+    session.pop('uploaded_file', None)
+
+def run_analysis(filename, language):
+    filepath = uploaded_path(filename)
+    if not filepath or not os.path.exists(filepath):
+        raise ValueError('Uploaded photo is no longer available. Please upload it again.')
+    try:
+        face_data = detect_face_landmarks(filepath)
+        if not face_data:
+            raise ValueError('No clear frontal face was detected. Use a well-lit, front-facing photo with one unobstructed face.')
+        result = analyze_face_with_ai(filepath, language, face_data)
+        if 'error' in result:
+            raise RuntimeError(result.get('message', 'The analysis service is temporarily unavailable.'))
+        report_id = f"analysis_{uuid.uuid4().hex}.pdf"
+        path = report_path(report_id)
+        generate_analysis_pdf(result, path, language)
+        with open(analysis_path(report_id), 'w', encoding='utf-8') as analysis_file:
+            json.dump(result, analysis_file, ensure_ascii=False)
+        session['report_id'] = report_id
+        session['analysis_complete'] = True
+        return result
+    finally:
+        safe_remove(filepath)
+        session.pop('uploaded_file', None)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -109,6 +177,8 @@ def index():
 def upload_file():
     try:
         language = request.form.get('language', 'en')
+        if language not in SUPPORTED_LANGUAGES:
+            language = 'en'
         
         if 'file' not in request.files:
             return jsonify({'error': 'No file uploaded'}), 400
@@ -118,6 +188,7 @@ def upload_file():
             return jsonify({'error': 'No file selected'}), 400
         
         if file and allowed_file(file.filename):
+            clear_previous_upload()
             # Generate unique filename
             filename = secure_filename(f"{uuid.uuid4().hex}_{file.filename}")
             filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
@@ -128,10 +199,19 @@ def upload_file():
             # Verify it's a valid image
             try:
                 with Image.open(filepath) as img:
-                    # Convert to RGB if necessary
-                    if img.mode != 'RGB':
-                        img = img.convert('RGB')
-                        img.save(filepath)
+                    img.verify()
+                with Image.open(filepath) as img:
+                    if img.width < 256 or img.height < 256:
+                        raise ValueError("Image is too small")
+                    if img.width * img.height > 40_000_000:
+                        raise ValueError("Image dimensions are too large")
+                    img = img.convert('RGB')
+                    img.thumbnail((2400, 2400))
+                    filename = f"{uuid.uuid4().hex}.jpg"
+                    normalized_path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                    img.save(normalized_path, 'JPEG', quality=92, optimize=True)
+                safe_remove(filepath)
+                filepath = normalized_path
             except Exception as e:
                 os.remove(filepath)
                 return jsonify({'error': 'Invalid image file'}), 400
@@ -151,6 +231,10 @@ def upload_file():
     except Exception as e:
         logging.error(f"Upload error: {e}")
         return jsonify({'error': 'Upload failed'}), 500
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_oversized_upload(_error):
+    return jsonify({'error': 'Image must be smaller than 16 MB'}), 413
 
 @app.route('/check-promo-code', methods=['POST'])
 def check_promo_code():
@@ -186,51 +270,20 @@ def free_analysis():
         if not session.get('free_analysis'):
             return jsonify({'error': 'Free analysis not authorized'}), 400
         
-        # Process the analysis directly without payment
         uploaded_file = session.get('uploaded_file')
         language = session.get('language', 'en')
         
         if not uploaded_file:
             return jsonify({'error': 'No file found'}), 400
         
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], uploaded_file)
-        if not os.path.exists(filepath):
-            return jsonify({'error': 'File not found'}), 400
-        
-        # Detect face features
-        face_data = detect_face_landmarks(filepath)
-        if not face_data:
-            return jsonify({'error': 'No face detected in image'}), 400
-        
-        # Perform AI analysis
-        logging.info(f"Starting AI analysis for file: {filepath}, language: {language}")
-        analysis_result = analyze_face_with_ai(filepath, language)
-        
-        if 'error' in analysis_result:
-            error_msg = analysis_result.get('message', 'Unknown error')
-            logging.error(f"AI analysis returned error: {error_msg}")
-            return jsonify({'error': error_msg}), 500
-        
-        # Generate PDF
-        pdf_filename = f"analysis_{uuid.uuid4().hex}.pdf"
-        pdf_path = os.path.join(tempfile.gettempdir(), pdf_filename)
-        
-        generate_analysis_pdf(analysis_result, pdf_path, language)
-        
-        # Store PDF info in session
-        session['pdf_file'] = pdf_path
-        session['analysis_complete'] = True
-        
-        # Return direct redirect to results page with PDF path
-        session['analysis_result'] = analysis_result
+        analysis_result = run_analysis(uploaded_file, language)
         session['show_download'] = True
-        session['pdf_path'] = pdf_path  # Store full path
+        session['free_analysis'] = False
         
         return jsonify({
             'success': True,
             'message': 'Free analysis complete! Your report is ready.',
-            'redirect_url': '/success',
-            'pdf_path': pdf_path  # Send path to frontend for backup
+            'redirect_url': '/success'
         })
     
     except Exception as e:
@@ -281,8 +334,10 @@ def success():
     translations = get_translations(language)
     
     # Check for free analysis completion
-    if session.get('show_download') and session.get('analysis_result'):
-        analysis_result = session.get('analysis_result')
+    if session.get('show_download') and session.get('report_id'):
+        analysis_result = load_analysis(session.get('report_id'))
+        if not analysis_result:
+            return redirect(url_for('index'))
         return render_template('success.html', 
                              analysis=analysis_result, 
                              pdf_ready=True,
@@ -302,47 +357,17 @@ def success():
         if checkout_session.payment_status != 'paid':
             return redirect(url_for('cancel'))
         
-        # Process the analysis
+        if session.get('analysis_complete') and session.get('report_id'):
+            cached_result = load_analysis(session.get('report_id'))
+            if cached_result:
+                return render_template('success.html', analysis=cached_result,
+                                   pdf_ready=True, translations=translations, language=language)
+
         uploaded_file = session.get('uploaded_file')
         if not uploaded_file:
             return redirect(url_for('index'))
         
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], uploaded_file)
-        if not os.path.exists(filepath):
-            return redirect(url_for('index'))
-        
-        # Detect face features
-        face_data = detect_face_landmarks(filepath)
-        if not face_data:
-            # Clean up and return error
-            os.remove(filepath)
-            return render_template('success.html', error="No face detected in the image", language=language)
-        
-        # Analyze with AI
-        logging.info(f"Starting paid AI analysis for file: {filepath}, language: {language}")
-        analysis_result = analyze_face_with_ai(filepath, language)
-        
-        if 'error' in analysis_result:
-            error_msg = analysis_result.get('message', 'Unknown error')
-            logging.error(f"AI analysis returned error: {error_msg}")
-            os.remove(filepath)
-            translations = get_translations(language)
-            return render_template('success.html', 
-                                 error=error_msg,
-                                 translations=translations,
-                                 language=language)
-        
-        # Generate PDF
-        pdf_filename = f"analysis_{uuid.uuid4().hex}.pdf"
-        pdf_path = os.path.join(app.config['UPLOAD_FOLDER'], pdf_filename)
-        
-        generate_analysis_pdf(analysis_result, pdf_path, language)
-        
-        # Store PDF info in session
-        session['pdf_file'] = pdf_filename
-        
-        # Clean up uploaded image
-        os.remove(filepath)
+        analysis_result = run_analysis(uploaded_file, language)
         
         translations = get_translations(language)
         return render_template('success.html', 
@@ -355,50 +380,27 @@ def success():
         logging.error(f"Analysis error: {e}")
         translations = get_translations(language)
         return render_template('success.html', 
-                             error="Analysis failed. Please try again.",
+                             error=str(e),
                              translations=translations,
                              language=language)
 
-@app.route('/download-pdf', methods=['GET', 'POST'])
+@app.route('/download-pdf', methods=['GET'])
 def download_pdf():
-    # Try to get PDF path from session first
-    pdf_path = session.get('pdf_file') or session.get('pdf_path')
-    
-    # If POST request with path parameter (backup method)
-    if request.method == 'POST':
-        data = request.get_json()
-        if data and 'pdf_path' in data:
-            pdf_path = data['pdf_path']
-    
-    logging.debug(f"Download PDF attempt - Path: {pdf_path}")
-    logging.debug(f"Session contents: {dict(session)}")
-    
+    pdf_path = report_path(session.get('report_id'))
     if not pdf_path:
-        logging.error("No pdf_path found")
         return jsonify({'error': 'No PDF file available'}), 404
-    
     if not os.path.exists(pdf_path):
-        logging.error(f"PDF file does not exist: {pdf_path}")
         return jsonify({'error': 'PDF file not found'}), 404
-    
     try:
-        # Send file and then clean up
-        def remove_file(response):
-            try:
-                os.remove(pdf_path)
-                # Clear session data
-                session.pop('pdf_file', None)
-                session.pop('uploaded_file', None)
-                session.pop('stripe_session_id', None)
-            except:
-                pass
-            return response
-        
-        return send_file(pdf_path, 
-                        as_attachment=True, 
-                        download_name=f"face_analysis_report.pdf",
-                        mimetype='application/pdf')
-    
+        with open(pdf_path, 'rb') as report:
+            payload = report.read()
+        safe_remove(pdf_path)
+        safe_remove(analysis_path(session.get('report_id')))
+        session.clear()
+        return send_file(
+            __import__('io').BytesIO(payload), as_attachment=True,
+            download_name="face_analysis_report.pdf", mimetype='application/pdf'
+        )
     except Exception as e:
         logging.error(f"Download error: {e}")
         return redirect(url_for('index'))
@@ -410,9 +412,7 @@ def cancel():
     # Clean up any uploaded files
     uploaded_file = session.get('uploaded_file')
     if uploaded_file:
-        filepath = os.path.join(app.config['UPLOAD_FOLDER'], uploaded_file)
-        if os.path.exists(filepath):
-            os.remove(filepath)
+        safe_remove(uploaded_path(uploaded_file))
     
     # Clear session
     session.clear()
@@ -435,4 +435,4 @@ def translate():
         return jsonify({'error': 'Translation failed'}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000)
