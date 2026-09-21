@@ -7,14 +7,13 @@ from openai import OpenAI
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 
-# Initialize OpenAI client
-api_key = os.environ.get("OPENAI_API_KEY")
-if not api_key:
-    logging.error("OPENAI_API_KEY environment variable is not set!")
-else:
-    logging.info("OpenAI API credentials are configured")
-    
-client = OpenAI(api_key=api_key)
+def get_ai_client():
+    """Create a fresh client using Replit-managed OpenAI credentials."""
+    api_key = os.environ.get("AI_INTEGRATIONS_OPENAI_API_KEY")
+    base_url = os.environ.get("AI_INTEGRATIONS_OPENAI_BASE_URL")
+    if not api_key or not base_url:
+        raise RuntimeError("Replit AI Integrations is not enabled for this app")
+    return OpenAI(api_key=api_key, base_url=base_url)
 
 def encode_image(image_path):
     """Encode image to base64"""
@@ -167,9 +166,9 @@ Describe image quality and uncertainty. If a feature is obscured, say so rather 
 """
         
         # Make API call
-        logging.info("Making OpenAI API call...")
-        response = client.chat.completions.create(
-            model=os.environ.get("OPENAI_VISION_MODEL", "gpt-4o"),
+        logging.info("Making Replit-managed OpenAI vision request")
+        response = get_ai_client().chat.completions.create(
+            model=os.environ.get("REPLIT_AI_MODEL", "gpt-5.4"),
             messages=[
                 {
                     "role": "user",
@@ -188,7 +187,7 @@ Describe image quality and uncertainty. If a feature is obscured, say so rather 
                 }
             ],
             response_format={"type": "json_object"},
-            max_tokens=4000
+            max_completion_tokens=6000
         )
         
         logging.info(f"OpenAI API response received. Choices: {len(response.choices)}")
@@ -248,8 +247,8 @@ def translate_text(text, target_language):
         
         target_name = language_names.get(target_language, 'English')
         
-        response = client.chat.completions.create(
-            model="gpt-4o",
+        response = get_ai_client().chat.completions.create(
+            model=os.environ.get("REPLIT_AI_TRANSLATION_MODEL", "gpt-5.4-mini"),
             messages=[
                 {
                     "role": "system",
@@ -260,7 +259,7 @@ def translate_text(text, target_language):
                     "content": text
                 }
             ],
-            max_tokens=1000
+            max_completion_tokens=1500
         )
         
         return response.choices[0].message.content

@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a Flask-based web application that provides AI-powered face analysis using ancient wisdom systems including Chinese Mian Xiang, Greek Physiognomy, Vedic Samudrika Shastra, Islamic Firasa, and modern FACS/Ekman techniques. The application uses OpenAI's GPT-4 Vision API to analyze uploaded face images and generates comprehensive PDF reports in multiple languages.
+This is a Flask-based web application that provides AI-powered face analysis using ancient wisdom systems including Chinese Mian Xiang, Greek Physiognomy, Vedic Samudrika Shastra, Islamic Firasa, and modern FACS/Ekman techniques. The application uses OpenAI through Replit AI Integrations to analyze uploaded face images and generates comprehensive PDF reports in multiple languages.
 
 ## System Architecture
 
@@ -21,7 +21,7 @@ This is a Flask-based web application that provides AI-powered face analysis usi
 - **Framework**: Flask (Python web framework)
 - **Structure**: Modular service-oriented architecture
   - `app.py`: Main Flask application with route handlers
-  - `openai_service.py`: OpenAI GPT-4 Vision API integration
+  - `openai_service.py`: Replit-managed OpenAI vision integration
   - `pdf_service.py`: PDF generation using ReportLab
   - `translations.py`: Multi-language support system
 - **Session Management**: Flask sessions for temporary data storage
@@ -40,7 +40,7 @@ This is a Flask-based web application that provides AI-powered face analysis usi
 - **Upload Validation**: File type and size restrictions (16MB max, PNG/JPG/JPEG/GIF)
 
 ### AI Analysis Engine
-- **OpenAI GPT-4o Vision**: Advanced analysis engine with comprehensive life path assessment
+- **OpenAI via Replit AI Integrations**: Managed multimodal analysis without a user-supplied API key
 - **Analysis Framework**: 
   - Advanced Physiognomy & Morphopsychology (scientific approach)
   - Chinese Mian Xiang (secular 5-element system, 12-palace mapping)
@@ -75,13 +75,13 @@ This is a Flask-based web application that provides AI-powered face analysis usi
    - User selects language and uploads photo
    - Basic face detection validates image
    - Stripe payment processing
-   - AI analysis via OpenAI GPT-4 Vision
+   - AI analysis via Replit-managed OpenAI
    - PDF report generation
    - Secure download and cleanup
 
 2. **Data Processing**:
    - Image temporarily stored in `/static/uploads/`
-   - OpenAI API receives base64-encoded image
+   - Replit-managed OpenAI receives the base64-encoded image
    - Analysis results formatted into structured data
    - PDF generated in temporary location
    - All files automatically deleted post-download
@@ -95,7 +95,7 @@ This is a Flask-based web application that provides AI-powered face analysis usi
 ## External Dependencies
 
 ### Core Services
-- **OpenAI API**: GPT-4 Vision for face analysis
+- **Replit AI Integrations**: OpenAI multimodal model for face analysis
 - **Stripe**: Payment processing (€29.99 per analysis)
 
 ### Python Libraries
@@ -121,7 +121,8 @@ This is a Flask-based web application that provides AI-powered face analysis usi
 - **Development**: Local Flask development server
 - **Production**: Replit hosting with environment variables
 - **Environment Variables**:
-  - `OPENAI_API_KEY`: OpenAI service authentication
+  - `AI_INTEGRATIONS_OPENAI_API_KEY`: Automatically provisioned Replit-managed credential
+  - `AI_INTEGRATIONS_OPENAI_BASE_URL`: Automatically provisioned Replit-managed endpoint
   - `STRIPE_SECRET_KEY`: Stripe payment processing
   - `SESSION_SECRET`: Flask session encryption
   - `REPLIT_DEV_DOMAIN`: Dynamic domain handling
