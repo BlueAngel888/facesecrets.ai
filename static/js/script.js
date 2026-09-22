@@ -332,7 +332,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         guidanceOverlay.style.display = 'block';
-        guidanceText.textContent = '📸 Ready to capture! Just position yourself and click the button';
+        guidanceText.textContent = 'Ready to capture. Position yourself and click the button.';
 
         // Start guidance analysis every 1000ms (less frequent for better performance)
         guidanceInterval = setInterval(() => {
@@ -474,14 +474,14 @@ document.addEventListener('DOMContentLoaded', function() {
         
         // Very relaxed guidance - only block in extreme cases
         if (analysis.brightness < 30) {
-            message = '💡 Need a bit more light to see you clearly';
+            message = 'A little more light will help us see you clearly.';
             isReadyToCapture = false;
         } else {
             // Always ready to capture in normal conditions
             if (analysis.faceDetected) {
-                message = '✅ Looking good! Ready to capture';
+                message = 'Looking good. Ready to capture.';
             } else {
-                message = '📸 Position yourself and capture when ready';
+                message = 'Position yourself and capture when ready.';
             }
             isReadyToCapture = true;
         }

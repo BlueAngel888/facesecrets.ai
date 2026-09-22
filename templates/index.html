@@ -31,11 +31,13 @@
     <section class="hero-section">
         <div class="hero-overlay"></div>
         <div class="container">
-            <div class="row justify-content-center text-center">
-                <div class="col-lg-8">
+            <div class="row align-items-center g-5 hero-grid">
+                <div class="col-lg-7">
+                    <div class="eyebrow">ANCIENT WISDOM · PRIVATE REFLECTION</div>
                     <h1 class="hero-title animated-text">{{ translations.hook }}</h1>
                     <p class="hero-subtitle">{{ translations.subtitle }}</p>
-                    
+                </div>
+                <div class="col-lg-5">
                     <!-- Upload Section -->
                     <div class="upload-section mt-5">
                         <form id="uploadForm" enctype="multipart/form-data">
@@ -44,7 +46,8 @@
                                 <div class="upload-content">
                                     <i class="fas fa-cloud-upload-alt upload-icon"></i>
                                     <h3>{{ translations.upload_button }}</h3>
-                                    <p>Drop your photo here or click to browse</p>
+                                    <p>Drop a clear portrait here, or select one from your device</p>
+                                    <small>Private by design · your image is used for this session only</small>
                                     <input type="file" id="fileInput" name="file" accept="image/*" hidden>
                                 </div>
                             </div>
@@ -54,6 +57,7 @@
                         <button class="btn btn-mystical btn-lg mt-3" id="cameraBtn">
                             <i class="fas fa-camera"></i> {{ translations.camera_button }}
                         </button>
+                        <div class="hero-note"><i class="fas fa-lock"></i> A considered report, not a diagnosis or fixed prediction</div>
                     </div>
                 </div>
             </div>
