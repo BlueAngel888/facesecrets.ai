@@ -8,18 +8,12 @@ from openai import OpenAI
 logging.basicConfig(level=logging.INFO)
 
 def get_ai_client():
-    """Create a fresh client using managed or standard OpenAI credentials."""
-    api_key = (
-        os.environ.get("AI_INTEGRATIONS_OPENAI_API_KEY")
-        or os.environ.get("OPENAI_API_KEY")
-    )
+    """Create a fresh client using Replit-managed OpenAI credentials."""
+    api_key = os.environ.get("AI_INTEGRATIONS_OPENAI_API_KEY")
     base_url = os.environ.get("AI_INTEGRATIONS_OPENAI_BASE_URL")
-    if not api_key:
-        raise RuntimeError("OpenAI is not configured for this app")
-    client_options = {"api_key": api_key}
-    if base_url:
-        client_options["base_url"] = base_url
-    return OpenAI(**client_options)
+    if not api_key or not base_url:
+        raise RuntimeError("Replit AI is not enabled for this app")
+    return OpenAI(api_key=api_key, base_url=base_url)
 
 def encode_image(image_path):
     """Encode image to base64"""

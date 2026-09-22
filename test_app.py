@@ -90,14 +90,16 @@ class FlowTests(unittest.TestCase):
         self.assertTrue(hasattr(face_app.cv2, 'data'))
 
     @patch.dict(os.environ, {
-        'OPENAI_API_KEY': 'test-key',
-        'AI_INTEGRATIONS_OPENAI_API_KEY': '',
-        'AI_INTEGRATIONS_OPENAI_BASE_URL': '',
+        'AI_INTEGRATIONS_OPENAI_API_KEY': 'managed-test-key',
+        'AI_INTEGRATIONS_OPENAI_BASE_URL': 'https://managed-ai.example.test',
     })
     @patch.object(openai_service, 'OpenAI')
-    def test_standard_openai_credentials_are_supported(self, client_mock):
+    def test_replit_managed_openai_credentials_are_used(self, client_mock):
         openai_service.get_ai_client()
-        client_mock.assert_called_once_with(api_key='test-key')
+        client_mock.assert_called_once_with(
+            api_key='managed-test-key',
+            base_url='https://managed-ai.example.test',
+        )
 
     @patch.object(openai_service, 'encode_image', return_value='encoded-image')
     @patch.object(openai_service, 'get_ai_client')
