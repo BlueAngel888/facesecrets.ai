@@ -288,7 +288,7 @@ def free_analysis():
     
     except Exception as e:
         logging.error(f"Free analysis error: {e}")
-        return jsonify({'error': 'Analysis failed'}), 500
+        return jsonify({'error': str(e) or 'Analysis failed'}), 500
 
 @app.route('/create-checkout-session', methods=['POST'])
 def create_checkout_session():

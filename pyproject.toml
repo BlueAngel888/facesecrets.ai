@@ -10,7 +10,7 @@ dependencies = [
     "gunicorn>=23.0.0",
     "numpy>=2.3.1",
     "openai>=1.93.0",
-    "opencv-python>=4.11.0.86",
+    "opencv-python==4.11.0.86",
     "pillow>=11.3.0",
     "psycopg2-binary>=2.9.10",
     "reportlab>=4.4.2",

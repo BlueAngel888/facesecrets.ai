@@ -6,6 +6,7 @@ from unittest.mock import patch
 from PIL import Image
 
 import app as face_app
+import openai_service
 
 
 def image_bytes(size=(640, 640)):
@@ -83,6 +84,30 @@ class FlowTests(unittest.TestCase):
     def test_download_does_not_accept_paths(self):
         response = self.client.post('/download-pdf', json={'pdf_path': '/etc/passwd'})
         self.assertEqual(response.status_code, 405)
+
+    def test_face_detection_dependency_is_complete(self):
+        self.assertTrue(hasattr(face_app.cv2, 'CascadeClassifier'))
+        self.assertTrue(hasattr(face_app.cv2, 'data'))
+
+    @patch.dict(os.environ, {
+        'OPENAI_API_KEY': 'test-key',
+        'AI_INTEGRATIONS_OPENAI_API_KEY': '',
+        'AI_INTEGRATIONS_OPENAI_BASE_URL': '',
+    })
+    @patch.object(openai_service, 'OpenAI')
+    def test_standard_openai_credentials_are_supported(self, client_mock):
+        openai_service.get_ai_client()
+        client_mock.assert_called_once_with(api_key='test-key')
+
+    @patch.object(openai_service, 'encode_image', return_value='encoded-image')
+    @patch.object(openai_service, 'get_ai_client')
+    def test_exhausted_openai_credits_return_actionable_error(self, client_mock, _encode_mock):
+        client_mock.return_value.chat.completions.create.side_effect = RuntimeError(
+            'credit_balance_exhausted: no credits remaining'
+        )
+        result = openai_service.analyze_face_with_ai('/missing.jpg')
+        self.assertEqual(result['error'], 'Analysis failed')
+        self.assertIn('no OpenAI credits remaining', result['message'])
 
 
 if __name__ == '__main__':

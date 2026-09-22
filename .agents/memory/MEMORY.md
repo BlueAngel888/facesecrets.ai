@@ -1,0 +1,1 @@
+- [OpenCV face detection compatibility](opencv-face-detection.md) — keep the classifier-capable OpenCV release pinned; newer wheel lacked CascadeClassifier.

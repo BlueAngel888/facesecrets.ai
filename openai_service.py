@@ -8,12 +8,18 @@ from openai import OpenAI
 logging.basicConfig(level=logging.INFO)
 
 def get_ai_client():
-    """Create a fresh client using Replit-managed OpenAI credentials."""
-    api_key = os.environ.get("AI_INTEGRATIONS_OPENAI_API_KEY")
+    """Create a fresh client using managed or standard OpenAI credentials."""
+    api_key = (
+        os.environ.get("AI_INTEGRATIONS_OPENAI_API_KEY")
+        or os.environ.get("OPENAI_API_KEY")
+    )
     base_url = os.environ.get("AI_INTEGRATIONS_OPENAI_BASE_URL")
-    if not api_key or not base_url:
-        raise RuntimeError("Replit AI Integrations is not enabled for this app")
-    return OpenAI(api_key=api_key, base_url=base_url)
+    if not api_key:
+        raise RuntimeError("OpenAI is not configured for this app")
+    client_options = {"api_key": api_key}
+    if base_url:
+        client_options["base_url"] = base_url
+    return OpenAI(**client_options)
 
 def encode_image(image_path):
     """Encode image to base64"""
@@ -166,9 +172,9 @@ Describe image quality and uncertainty. If a feature is obscured, say so rather 
 """
         
         # Make API call
-        logging.info("Making Replit-managed OpenAI vision request")
+        logging.info("Making OpenAI vision request")
         response = get_ai_client().chat.completions.create(
-            model=os.environ.get("REPLIT_AI_MODEL", "gpt-5.4"),
+            model=os.environ.get("REPLIT_AI_MODEL", os.environ.get("OPENAI_MODEL", "gpt-4o")),
             messages=[
                 {
                     "role": "user",
@@ -223,9 +229,16 @@ Describe image quality and uncertainty. If a feature is obscured, say so rather 
         
     except Exception as e:
         logging.error(f"AI analysis error: {e}")
+        error_text = str(e).lower()
+        if "insufficient_quota" in error_text or "credit_balance_exhausted" in error_text or "no credits remaining" in error_text:
+            message = "The AI analysis service has no OpenAI credits remaining. Please try again after billing is restored."
+        elif "rate_limit" in error_text or "too many requests" in error_text:
+            message = "The AI analysis service is busy. Please wait a moment and try again."
+        else:
+            message = "The analysis service is temporarily unavailable. Your photo has been deleted; please try again later."
         return {
-            "error": "Analysis failed", 
-            "message": "The analysis service is temporarily unavailable. Your photo has been deleted; please try again later."
+            "error": "Analysis failed",
+            "message": message
         }
 
 def translate_text(text, target_language):
