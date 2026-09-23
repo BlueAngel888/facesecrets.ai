@@ -35,6 +35,7 @@ class FlowTests(unittest.TestCase):
         face_app.app.config.update(TESTING=True, SECRET_KEY='test')
         face_app._rate_limit_events.clear()
         self.client = face_app.app.test_client()
+        self.client.environ_base['HTTP_ORIGIN'] = 'http://localhost'
 
     def upload(self, size=(640, 640)):
         return self.client.post('/upload', data={
@@ -64,11 +65,11 @@ class FlowTests(unittest.TestCase):
         self.assertEqual(results.status_code, 200)
         self.assertIn(b'executive_summary', results.data)
         self.assertIn(SAMPLE_RESULT['executive_summary'].encode(), results.data)
-        download = self.client.get('/download-pdf')
+        download = self.client.post('/download-pdf')
         self.assertEqual(download.status_code, 200)
         self.assertEqual(download.mimetype, 'application/pdf')
         self.assertTrue(download.data.startswith(b'%PDF'))
-        self.assertEqual(self.client.get('/download-pdf').status_code, 404)
+        self.assertEqual(self.client.post('/download-pdf').status_code, 404)
 
     @patch.object(face_app.stripe.checkout.Session, 'retrieve')
     @patch.object(face_app, 'detect_face_landmarks', return_value={'face_detected': True})
@@ -88,7 +89,80 @@ class FlowTests(unittest.TestCase):
 
     def test_download_does_not_accept_paths(self):
         response = self.client.post('/download-pdf', json={'pdf_path': '/etc/passwd'})
+        self.assertEqual(response.status_code, 404)
+
+    def test_session_cookie_uses_lax_samesite(self):
+        self.assertEqual(face_app.app.config['SESSION_COOKIE_SAMESITE'], 'Lax')
+
+    def test_cross_site_upload_is_rejected_without_replacing_session_photo(self):
+        with self.client.session_transaction() as session:
+            session['uploaded_file'] = 'existing.jpg'
+        response = self.client.post('/upload', data={
+            'file': (image_bytes(), 'attacker.jpg'),
+            'language': 'en',
+        }, content_type='multipart/form-data', headers={
+            'Origin': 'https://attacker-controlled.example',
+        })
+        self.assertEqual(response.status_code, 403)
+        with self.client.session_transaction() as session:
+            self.assertEqual(session['uploaded_file'], 'existing.jpg')
+
+    @patch.object(face_app.stripe.checkout.Session, 'create')
+    def test_cross_site_checkout_is_rejected_before_stripe_call(self, create_mock):
+        with self.client.session_transaction() as session:
+            session['uploaded_file'] = 'existing.jpg'
+        response = self.client.post('/create-checkout-session', headers={
+            'Origin': 'https://attacker-controlled.example',
+        })
+        self.assertEqual(response.status_code, 403)
+        create_mock.assert_not_called()
+
+    @patch.object(face_app, 'run_analysis')
+    def test_cross_site_free_analysis_is_rejected_without_consuming_promo(self, analysis_mock):
+        with self.client.session_transaction() as session:
+            session['uploaded_file'] = 'existing.jpg'
+            session['free_analysis'] = True
+            session['free_analysis_expires_at'] = int(face_app.time.time()) + 60
+        response = self.client.post('/free-analysis', headers={
+            'Origin': 'https://attacker-controlled.example',
+        })
+        self.assertEqual(response.status_code, 403)
+        analysis_mock.assert_not_called()
+        with self.client.session_transaction() as session:
+            self.assertTrue(session['free_analysis'])
+
+    def test_same_origin_referer_is_accepted(self):
+        client = face_app.app.test_client()
+        response = client.post('/check-promo-code', json={
+            'promo_code': 'letsgo',
+        }, headers={'Referer': 'http://localhost/'})
+        self.assertEqual(response.status_code, 200)
+
+    def test_get_cannot_consume_report(self):
+        with self.client.session_transaction() as session:
+            session['report_id'] = 'existing.pdf'
+        response = self.client.get('/download-pdf')
         self.assertEqual(response.status_code, 405)
+        with self.client.session_transaction() as session:
+            self.assertEqual(session['report_id'], 'existing.pdf')
+
+    def test_get_cancel_does_not_clear_session(self):
+        with self.client.session_transaction() as session:
+            session['uploaded_file'] = 'existing.jpg'
+        response = self.client.get('/cancel')
+        self.assertEqual(response.status_code, 200)
+        with self.client.session_transaction() as session:
+            self.assertEqual(session['uploaded_file'], 'existing.jpg')
+
+    def test_cross_site_cancel_post_is_rejected_without_clearing_session(self):
+        with self.client.session_transaction() as session:
+            session['uploaded_file'] = 'existing.jpg'
+        response = self.client.post('/cancel', headers={
+            'Origin': 'https://attacker-controlled.example',
+        })
+        self.assertEqual(response.status_code, 403)
+        with self.client.session_transaction() as session:
+            self.assertEqual(session['uploaded_file'], 'existing.jpg')
 
     @patch.object(face_app, 'PROMO_CODE', 'revocable-code')
     def test_promo_code_is_server_configured_and_grant_expires(self):

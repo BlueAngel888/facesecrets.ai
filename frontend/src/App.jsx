@@ -64,4 +64,20 @@ export default function App({ page = "home", language: initialLanguage = "en", a
   </div>;
 }
 function Progress({ stage, progress, t }) { return <motion.div className="progress-wrap" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><Sparkles color="var(--gold)" size={26} /><h3 className="serif" style={{ fontSize: 48, fontWeight: 400 }}>{t.processing}</h3><p className="hero-copy" style={{ margin: "auto" }}>{stage === "upload" ? "Securing your portrait for this session." : "Comparing visible patterns across five reflective traditions."}</p><div className="progress-line"><span style={{ width: `${progress}%` }} /></div><div className="stages"><div className={`stage ${stage === "upload" ? "active" : ""}`}><strong>01</strong>Secure upload</div><div className={`stage ${stage === "analysis" ? "active" : ""}`}><strong>02</strong>Read patterns</div><div className="stage"><strong>03</strong>Prepare report</div></div></motion.div>; }
-function StatusPage({ page, t, analysis, error }) { const isSuccess = page === "success"; const isCancel = page === "cancel"; return <div className="shell"><header className="container nav"><a className="brand" href="/"><span className="brand-mark">a</span> Ancient Wisdom AI</a></header><main className="container result"><div><div className="eyebrow">{isSuccess ? "Session complete" : isCancel ? "Checkout" : "Session notice"}</div><h1 className="serif">{isSuccess ? t.success : isCancel ? t.cancel : t.error}</h1><p>{isSuccess ? "Your private report has been prepared. Download it now; the session will be cleared after delivery." : isCancel ? "You can return whenever the time feels right." : error || "The session could not finish safely. Your portrait was not retained."}</p>{isSuccess && analysis?.executive_summary && <section className="report-preview"><div className="eyebrow">Executive Summary</div><p>{analysis.executive_summary}</p></section>}<div className="actions" style={{ justifyContent: "center" }}>{isSuccess && <a className="btn" href="/download-pdf"><Check size={16} /> {t.download}</a>}<a className="btn secondary" href="/"><RotateCcw size={16} /> {t.again}</a></div></div></main></div>; }
+function StatusPage({ page, t, analysis, error }) {
+  const isSuccess = page === "success";
+  const isCancel = page === "cancel";
+  return <div className="shell">
+    <header className="container nav"><a className="brand" href="/"><span className="brand-mark">a</span> Ancient Wisdom AI</a></header>
+    <main className="container result"><div>
+      <div className="eyebrow">{isSuccess ? "Session complete" : isCancel ? "Checkout" : "Session notice"}</div>
+      <h1 className="serif">{isSuccess ? t.success : isCancel ? t.cancel : t.error}</h1>
+      <p>{isSuccess ? "Your private report has been prepared. Download it now; the session will be cleared after delivery." : isCancel ? "You can return whenever the time feels right." : error || "The session could not finish safely. Your portrait was not retained."}</p>
+      {isSuccess && analysis?.executive_summary && <section className="report-preview"><div className="eyebrow">Executive Summary</div><p>{analysis.executive_summary}</p></section>}
+      <div className="actions" style={{ justifyContent: "center" }}>
+        {isSuccess && <form method="post" action="/download-pdf"><button className="btn" type="submit"><Check size={16} /> {t.download}</button></form>}
+        {isCancel ? <form method="post" action="/cancel"><button className="btn secondary" type="submit"><RotateCcw size={16} /> {t.again}</button></form> : <a className="btn secondary" href="/"><RotateCcw size={16} /> {t.again}</a>}
+      </div>
+    </div></main>
+  </div>;
+}

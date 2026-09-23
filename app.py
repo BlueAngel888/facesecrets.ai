@@ -14,6 +14,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 import uuid
 import tempfile
 from pathlib import Path
+from urllib.parse import urlsplit
 from PIL import Image
 import cv2
 import numpy as np
@@ -85,6 +86,21 @@ app.config.update(
     SESSION_COOKIE_SAMESITE='Lax',
     SESSION_COOKIE_SECURE=bool(os.environ.get('REPLIT_DEPLOYMENT')),
 )
+
+def request_source_is_same_origin():
+    source = request.headers.get('Origin') or request.headers.get('Referer')
+    if not source:
+        return False
+
+    source_url = urlsplit(source)
+    expected_url = urlsplit(request.host_url)
+    return (
+        source_url.scheme.lower(),
+        source_url.netloc.lower(),
+    ) == (
+        expected_url.scheme.lower(),
+        expected_url.netloc.lower(),
+    )
 
 def safe_remove(path):
     if path:
@@ -430,7 +446,7 @@ def success():
         return render_react(page='error', error=str(e),
                             translations=translations, language=language)
 
-@app.route('/download-pdf', methods=['GET'])
+@app.route('/download-pdf', methods=['POST'])
 def download_pdf():
     pdf_path = report_path(session.get('report_id'))
     if not pdf_path:
@@ -451,18 +467,15 @@ def download_pdf():
         logging.error(f"Download error: {e}")
         return redirect(url_for('index'))
 
-@app.route('/cancel')
+@app.route('/cancel', methods=['GET', 'POST'])
 def cancel():
     language = session.get('language', 'en')
-    
-    # Clean up any uploaded files
-    uploaded_file = session.get('uploaded_file')
-    if uploaded_file:
-        safe_remove(uploaded_path(uploaded_file))
-    
-    # Clear session
-    session.clear()
-    
+
+    if request.method == 'POST':
+        safe_remove(uploaded_path(session.get('uploaded_file')))
+        session.clear()
+        return redirect(url_for('index'))
+
     return render_react(page='cancel', translations=get_translations(language), language=language)
 
 @app.route('/translate', methods=['POST'])
@@ -523,3 +536,8 @@ def rate_limit_exceeded(scope, limit, window_seconds, per_ip=True):
             return True
         events.append(now)
         return False
+
+@app.before_request
+def reject_cross_site_state_changes():
+    if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'} and not request_source_is_same_origin():
+        return jsonify({'error': 'Cross-site request blocked'}), 403
