@@ -338,6 +338,15 @@ class FlowTests(unittest.TestCase):
             deployment_config,
             'Production deployment configuration must never expose the MASTER promo code',
         )
+        self.assertEqual(
+            replit_config['deployment'].get('build'),
+            [
+                'bash',
+                '-c',
+                'python -m unittest discover -v && npm test',
+            ],
+            'Production deployment must run the Python and frontend test suites before publishing',
+        )
 
     @patch.dict(os.environ, {
         'AI_INTEGRATIONS_OPENAI_API_KEY': 'managed-test-key',
