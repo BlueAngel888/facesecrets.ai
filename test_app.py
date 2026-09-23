@@ -33,6 +33,7 @@ SAMPLE_RESULT = {
 class FlowTests(unittest.TestCase):
     def setUp(self):
         face_app.app.config.update(TESTING=True, SECRET_KEY='test')
+        face_app._rate_limit_events.clear()
         self.client = face_app.app.test_client()
 
     def upload(self, size=(640, 640)):
@@ -55,6 +56,7 @@ class FlowTests(unittest.TestCase):
         self.assertEqual(self.upload().status_code, 200)
         with self.client.session_transaction() as session:
             session['free_analysis'] = True
+            session['free_analysis_expires_at'] = int(face_app.time.time()) + 60
         analyzed = self.client.post('/free-analysis')
         self.assertEqual(analyzed.status_code, 200)
         self.assertNotIn('pdf_path', analyzed.get_json())
@@ -87,6 +89,57 @@ class FlowTests(unittest.TestCase):
     def test_download_does_not_accept_paths(self):
         response = self.client.post('/download-pdf', json={'pdf_path': '/etc/passwd'})
         self.assertEqual(response.status_code, 405)
+
+    @patch.object(face_app, 'PROMO_CODE', 'revocable-code')
+    def test_promo_code_is_server_configured_and_grant_expires(self):
+        self.assertEqual(
+            self.client.post('/check-promo-code', json={'promo_code': 'letsgo'}).status_code,
+            200,
+        )
+        accepted = self.client.post(
+            '/check-promo-code', json={'promo_code': 'revocable-code'}
+        )
+        self.assertTrue(accepted.get_json()['success'])
+        with self.client.session_transaction() as session:
+            self.assertTrue(session['free_analysis'])
+            self.assertGreater(session['free_analysis_expires_at'], int(face_app.time.time()))
+
+    @patch.object(face_app, 'translate_text', return_value='Bună')
+    def test_translation_requires_authorization_and_caps_input(self, translate_mock):
+        self.assertEqual(
+            self.client.post('/translate', json={'text': 'Hello', 'language': 'ro'}).status_code,
+            403,
+        )
+        with self.client.session_transaction() as session:
+            session['ai_authorized_until'] = int(face_app.time.time()) + 60
+        oversized = self.client.post(
+            '/translate',
+            json={'text': 'x' * (face_app.MAX_TRANSLATION_CHARACTERS + 1), 'language': 'ro'},
+        )
+        self.assertEqual(oversized.status_code, 413)
+        translated = self.client.post(
+            '/translate', json={'text': 'Hello', 'language': 'ro'}
+        )
+        self.assertEqual(translated.status_code, 200)
+        translate_mock.assert_called_once_with('Hello', 'ro')
+
+    def test_translation_is_rate_limited(self):
+        with self.client.session_transaction() as session:
+            session['ai_authorized_until'] = int(face_app.time.time()) + 60
+        with patch.object(face_app, 'translate_text', return_value='ok'):
+            for _ in range(20):
+                self.assertEqual(
+                    self.client.post(
+                        '/translate', json={'text': 'Hello', 'language': 'en'}
+                    ).status_code,
+                    200,
+                )
+            self.assertEqual(
+                self.client.post(
+                    '/translate', json={'text': 'Hello', 'language': 'en'}
+                ).status_code,
+                429,
+            )
 
     def test_react_shell_replaces_legacy_frontend_dependencies(self):
         response = self.client.get('/')

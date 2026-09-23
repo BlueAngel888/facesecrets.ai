@@ -2,6 +2,10 @@ import os
 import logging
 import json
 import base64
+import hmac
+import time
+from collections import defaultdict, deque
+from threading import Lock
 from flask import Flask, render_template, request, jsonify, send_file, redirect, session, url_for
 from werkzeug.exceptions import RequestEntityTooLarge
 import stripe
@@ -55,6 +59,12 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(REPORT_FOLDER, exist_ok=True)
 
 REACT_BUILD = Path(app.static_folder) / 'react'
+
+PROMO_CODE = os.environ.get('PROMO_CODE', '').strip()
+AI_AUTHORIZATION_TTL_SECONDS = 60 * 60
+MAX_TRANSLATION_CHARACTERS = 4000
+_rate_limit_events = defaultdict(deque)
+_rate_limit_lock = Lock()
 
 def render_react(page='home', **page_data):
     manifest_path = REACT_BUILD / '.vite' / 'manifest.json'
@@ -265,12 +275,18 @@ def handle_oversized_upload(_error):
 @app.route('/check-promo-code', methods=['POST'])
 def check_promo_code():
     try:
-        data = request.get_json()
+        if ai_request_is_limited('promo-check', 10, 100, 10 * 60):
+            return jsonify({'error': 'Too many promo code attempts. Please try again later.'}), 429
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({'error': 'Invalid request'}), 400
         promo_code = data.get('promo_code', '').strip().lower()
         
-        if promo_code == 'letsgo':
-            # Mark session as having valid free code
+        if PROMO_CODE and hmac.compare_digest(promo_code, PROMO_CODE.lower()):
+            # This grant is short-lived and can fund at most one analysis.
             session['free_analysis'] = True
+            session['free_analysis_expires_at'] = int(time.time()) + AI_AUTHORIZATION_TTL_SECONDS
+            grant_ai_authorization()
             return jsonify({
                 'success': True,
                 'message': 'Promo code accepted! Free analysis unlocked.',
@@ -293,8 +309,15 @@ def free_analysis():
         if 'uploaded_file' not in session:
             return jsonify({'error': 'No file uploaded'}), 400
         
-        if not session.get('free_analysis'):
-            return jsonify({'error': 'Free analysis not authorized'}), 400
+        if (
+            not session.get('free_analysis')
+            or session.get('free_analysis_expires_at', 0) < int(time.time())
+        ):
+            session.pop('free_analysis', None)
+            session.pop('free_analysis_expires_at', None)
+            return jsonify({'error': 'Free analysis not authorized'}), 403
+        if ai_request_is_limited('free-analysis', 2, 30, 60 * 60):
+            return jsonify({'error': 'Analysis limit reached. Please try again later.'}), 429
         
         uploaded_file = session.get('uploaded_file')
         language = session.get('language', 'en')
@@ -302,9 +325,11 @@ def free_analysis():
         if not uploaded_file:
             return jsonify({'error': 'No file found'}), 400
         
+        # Consume the grant before starting the billable call so retries cannot reuse it.
+        session.pop('free_analysis', None)
+        session.pop('free_analysis_expires_at', None)
         analysis_result = run_analysis(uploaded_file, language)
         session['show_download'] = True
-        session['free_analysis'] = False
         
         return jsonify({
             'success': True,
@@ -381,6 +406,7 @@ def success():
         
         if checkout_session.payment_status != 'paid':
             return redirect(url_for('cancel'))
+        grant_ai_authorization()
         
         if session.get('analysis_complete') and session.get('report_id'):
             cached_result = load_analysis(session.get('report_id'))
@@ -442,9 +468,23 @@ def cancel():
 @app.route('/translate', methods=['POST'])
 def translate():
     try:
-        data = request.get_json()
+        if not has_ai_authorization():
+            return jsonify({'error': 'Payment or a valid promotion is required'}), 403
+        if ai_request_is_limited('translate', 20, 200, 60 * 60):
+            return jsonify({'error': 'Translation limit reached. Please try again later.'}), 429
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            return jsonify({'error': 'Invalid request'}), 400
         text = data.get('text', '')
         target_language = data.get('language', 'en')
+        if not isinstance(text, str) or not text.strip():
+            return jsonify({'error': 'Text is required'}), 400
+        if len(text) > MAX_TRANSLATION_CHARACTERS:
+            return jsonify({
+                'error': f'Text must be {MAX_TRANSLATION_CHARACTERS} characters or fewer'
+            }), 413
+        if target_language not in SUPPORTED_LANGUAGES:
+            return jsonify({'error': 'Unsupported language'}), 400
         
         translated_text = translate_text(text, target_language)
         return jsonify({'translated_text': translated_text})
@@ -455,3 +495,31 @@ def translate():
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
+
+def client_ip():
+    return request.remote_addr or 'unknown'
+
+def ai_request_is_limited(scope, ip_limit, global_limit, window_seconds):
+    return (
+        rate_limit_exceeded(scope, ip_limit, window_seconds, per_ip=True)
+        or rate_limit_exceeded(scope, global_limit, window_seconds, per_ip=False)
+    )
+
+def grant_ai_authorization():
+    session['ai_authorized_until'] = int(time.time()) + AI_AUTHORIZATION_TTL_SECONDS
+
+def has_ai_authorization():
+    return session.get('ai_authorized_until', 0) >= int(time.time())
+
+def rate_limit_exceeded(scope, limit, window_seconds, per_ip=True):
+    now = time.monotonic()
+    key = (scope, client_ip() if per_ip else 'global')
+    with _rate_limit_lock:
+        events = _rate_limit_events[key]
+        cutoff = now - window_seconds
+        while events and events[0] <= cutoff:
+            events.popleft()
+        if len(events) >= limit:
+            return True
+        events.append(now)
+        return False

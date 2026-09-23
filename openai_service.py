@@ -239,6 +239,11 @@ def translate_text(text, target_language):
     """
     Translate text to target language using GPT-4o
     """
+    if not isinstance(text, str) or not text.strip():
+        raise ValueError("Translation text is required")
+    if len(text) > 4000:
+        raise ValueError("Translation text is too long")
+
     try:
         language_names = {
             'en': 'English',
