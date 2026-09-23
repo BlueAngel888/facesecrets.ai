@@ -164,19 +164,53 @@ class FlowTests(unittest.TestCase):
         with self.client.session_transaction() as session:
             self.assertEqual(session['uploaded_file'], 'existing.jpg')
 
-    @patch.object(face_app, 'PROMO_CODE', 'revocable-code')
-    def test_promo_code_is_server_configured_and_grant_expires(self):
-        self.assertEqual(
-            self.client.post('/check-promo-code', json={'promo_code': 'letsgo'}).status_code,
-            200,
+    @patch.object(face_app, 'PROMO_CODE', 'MASTER')
+    def test_master_promo_is_case_insensitive_and_server_configured(self):
+        rejected = self.client.post(
+            '/check-promo-code', json={'promo_code': 'not-master'}
         )
-        accepted = self.client.post(
-            '/check-promo-code', json={'promo_code': 'revocable-code'}
-        )
+        self.assertFalse(rejected.get_json()['success'])
+        accepted = self.client.post('/check-promo-code', json={'promo_code': 'master'})
         self.assertTrue(accepted.get_json()['success'])
         with self.client.session_transaction() as session:
             self.assertTrue(session['free_analysis'])
             self.assertGreater(session['free_analysis_expires_at'], int(face_app.time.time()))
+            self.assertGreaterEqual(
+                session['ai_authorized_until'], int(face_app.time.time())
+            )
+
+    @patch.object(face_app, 'PROMO_CODE', 'MASTER')
+    @patch.object(face_app, 'run_analysis', return_value=SAMPLE_RESULT)
+    def test_master_grant_authorizes_exactly_one_free_analysis(self, analysis_mock):
+        with self.client.session_transaction() as session:
+            session['uploaded_file'] = 'existing.jpg'
+            session['language'] = 'en'
+
+        accepted = self.client.post(
+            '/check-promo-code', json={'promo_code': ' MaStEr '}
+        )
+        self.assertEqual(accepted.status_code, 200)
+        self.assertTrue(accepted.get_json()['success'])
+
+        first = self.client.post('/free-analysis')
+        second = self.client.post('/free-analysis')
+
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(second.status_code, 403)
+        analysis_mock.assert_called_once_with('existing.jpg', 'en')
+
+    @patch.object(face_app, 'PROMO_CODE', 'MASTER')
+    def test_promo_attempts_remain_rate_limited(self):
+        for _ in range(10):
+            response = self.client.post(
+                '/check-promo-code', json={'promo_code': 'invalid'}
+            )
+            self.assertEqual(response.status_code, 200)
+
+        limited = self.client.post(
+            '/check-promo-code', json={'promo_code': 'MASTER'}
+        )
+        self.assertEqual(limited.status_code, 429)
 
     @patch.object(face_app, 'translate_text', return_value='Bună')
     def test_translation_requires_authorization_and_caps_input(self, translate_mock):
