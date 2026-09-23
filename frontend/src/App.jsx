@@ -16,11 +16,11 @@ export default function App({ page = "home", language: initialLanguage = "en", a
   const [file, setFile] = useState(null), [preview, setPreview] = useState(""), [drag, setDrag] = useState(false);
   const [promo, setPromo] = useState(""), [promoState, setPromoState] = useState(""), [notice, setNotice] = useState("");
   const [stage, setStage] = useState("idle"), [progress, setProgress] = useState(0), [cameraOpen, setCameraOpen] = useState(false), [cameraError, setCameraError] = useState("");
-  const inputRef = useRef(null), videoRef = useRef(null), streamRef = useRef(null);
+  const inputRef = useRef(null), videoRef = useRef(null), streamRef = useRef(null), cameraRequestRef = useRef(0);
   const t = copy[language] || copy.en;
 
-  const stopCamera = () => { if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop()); streamRef.current = null; };
-  useEffect(() => () => stopCamera(), []);
+  const stopCamera = () => { if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop()); streamRef.current = null; if (videoRef.current) videoRef.current.srcObject = null; };
+  useEffect(() => () => { cameraRequestRef.current += 1; stopCamera(); }, []);
   useEffect(() => { if (page === "home" && language !== initialLanguage) window.history.replaceState({}, "", `/?lang=${language}`); }, [language, initialLanguage, page]);
   const validate = (candidate) => {
     if (!candidate) return;
@@ -50,8 +50,20 @@ export default function App({ page = "home", language: initialLanguage = "en", a
     } catch (error) { setNotice(error.message); setStage("error"); }
   };
   const checkPromo = async () => { if (!promo.trim()) return; setPromoState("checking"); try { const res = await postJSON("/check-promo-code", { promo_code: promo }); const json = await res.json(); setPromoState(json.success ? "accepted" : "invalid"); } catch { setPromoState("invalid"); } };
-  const openCamera = async () => { setCameraOpen(true); setCameraError(""); try { const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" }, audio: false }); streamRef.current = stream; if (videoRef.current) videoRef.current.srcObject = stream; } catch { setCameraError("Camera access was not granted. You can choose a portrait instead."); } };
-  const closeCamera = () => { stopCamera(); setCameraOpen(false); };
+  const openCamera = async () => {
+    setCameraOpen(true); setCameraError("");
+    const request = ++cameraRequestRef.current;
+    if (!navigator.mediaDevices?.getUserMedia) return setCameraError("Camera capture is not available in this browser. You can choose a portrait instead.");
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "user" } }, audio: false });
+      if (request !== cameraRequestRef.current) return stream.getTracks().forEach(track => track.stop());
+      streamRef.current = stream;
+      if (videoRef.current) videoRef.current.srcObject = stream;
+    } catch {
+      if (request === cameraRequestRef.current) setCameraError("Camera access was not granted. You can choose a portrait instead.");
+    }
+  };
+  const closeCamera = () => { cameraRequestRef.current += 1; stopCamera(); setCameraOpen(false); };
   const capture = () => { const video = videoRef.current; if (!video?.videoWidth) return setCameraError("The camera is still starting. Please wait a moment."); const canvas = document.createElement("canvas"); canvas.width = video.videoWidth; canvas.height = video.videoHeight; canvas.getContext("2d").drawImage(video, 0, 0); canvas.toBlob(blob => { if (blob) validate(new File([blob], "camera-portrait.jpg", { type: "image/jpeg" })); closeCamera(); }, "image/jpeg", .92); };
   const reset = () => { setStage("idle"); setProgress(0); setFile(null); setPreview(""); setNotice(""); setPromoState(""); setPromo(""); };
   if (page !== "home") return <StatusPage page={page} t={t} analysis={analysis} error={error} />;

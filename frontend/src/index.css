@@ -81,7 +81,7 @@ button { cursor: pointer; }
 .footer { border-top: 1px solid var(--line); padding: 32px 0 48px; color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; gap: 20px; }
 .dialog-backdrop { position: fixed; inset: 0; background: rgba(2,4,7,.82); z-index: 10; display: grid; place-items: center; padding: 20px; }
 .dialog { background: #111820; border: 1px solid var(--line); width: min(620px,100%); padding: 24px; }
-.video { width: 100%; aspect-ratio: 4/3; background: #050709; object-fit: cover; }
+.video { width: 100%; aspect-ratio: 4/3; background: #050709; object-fit: cover; transform: scaleX(-1); }
 .video-frame { position: relative; overflow: hidden; background: #050709; }
 .camera-scan { position: absolute; left: 6%; right: 6%; top: 50%; height: 1px; background: var(--teal); box-shadow: 0 0 18px var(--teal); animation: scan 3s ease-in-out infinite; }
 .face-guide { position: absolute; width: 42%; height: 68%; left: 29%; top: 13%; border: 1px solid rgba(212,169,95,.75); border-radius: 50%; box-shadow: 0 0 35px rgba(212,169,95,.12); }
