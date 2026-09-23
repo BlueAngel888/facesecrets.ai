@@ -7,15 +7,15 @@ This is a Flask-based web application that provides AI-powered face analysis usi
 ## System Architecture
 
 ### Frontend Architecture
-- **Framework**: Traditional server-side rendered Flask templates with Bootstrap 5
+- **Framework**: React built with Vite and served by Flask from compiled static assets
 - **UI Components**: 
   - Single-page responsive design with hero section
   - Multi-language support via dropdown selector
   - Drag-and-drop file upload interface
   - Camera capture functionality for mobile devices
-  - Modal-based loading states and interactions
-- **Styling**: Custom CSS with CSS variables for theming, Bootstrap for responsive grid
-- **JavaScript**: Vanilla JavaScript for file handling, camera integration, and payment flow
+  - Accessible React dialog and staged progress states
+- **Styling**: Responsive custom CSS token system with reduced-motion support
+- **Interaction**: React, Framer Motion, and Lucide icons
 
 ### Backend Architecture
 - **Framework**: Flask (Python web framework)
@@ -107,9 +107,10 @@ This is a Flask-based web application that provides AI-powered face analysis usi
 - **NumPy**: Image array processing
 
 ### Frontend Dependencies
-- **Bootstrap 5**: CSS framework and components
-- **Font Awesome**: Icon library
-- **Vanilla JavaScript**: No additional frameworks
+- **React**: Component-based user interface
+- **Vite**: Reproducible frontend build
+- **Framer Motion**: Accessible motion and transitions
+- **Lucide React**: Interface icons
 
 ### Infrastructure
 - **Replit**: Hosting platform with environment variable management

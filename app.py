@@ -9,6 +9,7 @@ from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 import uuid
 import tempfile
+from pathlib import Path
 from PIL import Image
 import cv2
 import numpy as np
@@ -52,6 +53,22 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 # Ensure upload directory exists
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(REPORT_FOLDER, exist_ok=True)
+
+REACT_BUILD = Path(app.static_folder) / 'react'
+
+def render_react(page='home', **page_data):
+    manifest_path = REACT_BUILD / '.vite' / 'manifest.json'
+    with manifest_path.open(encoding='utf-8') as manifest_file:
+        manifest = json.load(manifest_file)
+    entry = manifest['index.html']
+    data = {'page': page, **page_data}
+    return render_template(
+        'react.html',
+        page_data=data,
+        script_file=f"react/{entry['file']}",
+        css_files=[f"react/{name}" for name in entry.get('css', [])],
+        language=data.get('language', 'en'),
+    )
 
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
@@ -176,8 +193,11 @@ def index():
     if language not in SUPPORTED_LANGUAGES:
         language = 'en'
     
-    translations = get_translations(language)
-    return render_template('index.html', translations=translations, language=language, languages=SUPPORTED_LANGUAGES)
+    return render_react(
+        language=language,
+        languages=SUPPORTED_LANGUAGES,
+        translations=get_translations(language),
+    )
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
@@ -325,6 +345,8 @@ def create_checkout_session():
         # Store session ID for verification
         session['stripe_session_id'] = checkout_session.id
         
+        if checkout_session.url and request.accept_mimetypes.best == 'application/json':
+            return jsonify({'checkout_url': checkout_session.url})
         if checkout_session.url:
             return redirect(checkout_session.url, code=303)
         else:
@@ -344,12 +366,9 @@ def success():
         analysis_result = load_analysis(session.get('report_id'))
         if not analysis_result:
             return redirect(url_for('index'))
-        return render_template('success.html', 
-                             analysis=analysis_result, 
-                             pdf_ready=True,
-                             free_analysis=True,
-                             translations=translations,
-                             language=language)
+        return render_react(page='success', analysis=analysis_result,
+                            pdf_ready=True, free_analysis=True,
+                            translations=translations, language=language)
     
     # Handle Stripe payment success
     session_id = request.args.get('session_id')
@@ -366,8 +385,8 @@ def success():
         if session.get('analysis_complete') and session.get('report_id'):
             cached_result = load_analysis(session.get('report_id'))
             if cached_result:
-                return render_template('success.html', analysis=cached_result,
-                                   pdf_ready=True, translations=translations, language=language)
+                return render_react(page='success', analysis=cached_result,
+                                    pdf_ready=True, translations=translations, language=language)
 
         uploaded_file = session.get('uploaded_file')
         if not uploaded_file:
@@ -376,19 +395,14 @@ def success():
         analysis_result = run_analysis(uploaded_file, language)
         
         translations = get_translations(language)
-        return render_template('success.html', 
-                             analysis=analysis_result, 
-                             pdf_ready=True,
-                             translations=translations,
-                             language=language)
+        return render_react(page='success', analysis=analysis_result,
+                            pdf_ready=True, translations=translations, language=language)
     
     except Exception as e:
         logging.error(f"Analysis error: {e}")
         translations = get_translations(language)
-        return render_template('success.html', 
-                             error=str(e),
-                             translations=translations,
-                             language=language)
+        return render_react(page='error', error=str(e),
+                            translations=translations, language=language)
 
 @app.route('/download-pdf', methods=['GET'])
 def download_pdf():
@@ -423,8 +437,7 @@ def cancel():
     # Clear session
     session.clear()
     
-    translations = get_translations(language)
-    return render_template('cancel.html', translations=translations, language=language)
+    return render_react(page='cancel', translations=get_translations(language), language=language)
 
 @app.route('/translate', methods=['POST'])
 def translate():

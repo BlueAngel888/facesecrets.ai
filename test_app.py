@@ -60,7 +60,8 @@ class FlowTests(unittest.TestCase):
         self.assertNotIn('pdf_path', analyzed.get_json())
         results = self.client.get('/success')
         self.assertEqual(results.status_code, 200)
-        self.assertIn(b'Executive Summary', results.data)
+        self.assertIn(b'executive_summary', results.data)
+        self.assertIn(SAMPLE_RESULT['executive_summary'].encode(), results.data)
         download = self.client.get('/download-pdf')
         self.assertEqual(download.status_code, 200)
         self.assertEqual(download.mimetype, 'application/pdf')
@@ -86,6 +87,13 @@ class FlowTests(unittest.TestCase):
     def test_download_does_not_accept_paths(self):
         response = self.client.post('/download-pdf', json={'pdf_path': '/etc/passwd'})
         self.assertEqual(response.status_code, 405)
+
+    def test_react_shell_replaces_legacy_frontend_dependencies(self):
+        response = self.client.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'/static/react/assets/', response.data)
+        self.assertNotIn(b'bootstrap', response.data.lower())
+        self.assertNotIn(b'font-awesome', response.data.lower())
 
     def test_face_detection_dependency_is_complete(self):
         self.assertTrue(hasattr(face_app.cv2, 'CascadeClassifier'))
