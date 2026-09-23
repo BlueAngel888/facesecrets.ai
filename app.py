@@ -19,8 +19,14 @@ from translations import get_translations, SUPPORTED_LANGUAGES
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 
+SESSION_SECRET = os.environ.get("SESSION_SECRET")
+if not SESSION_SECRET:
+    raise RuntimeError(
+        "SESSION_SECRET must be set to a strong, private value before starting the application."
+    )
+
 app = Flask(__name__)
-app.secret_key = os.environ.get("SESSION_SECRET", "dev-secret-key-change-in-production")
+app.secret_key = SESSION_SECRET
 app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Stripe configuration

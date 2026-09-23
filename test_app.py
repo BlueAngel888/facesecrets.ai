@@ -1,5 +1,7 @@
 import io
 import os
+import subprocess
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -88,6 +90,20 @@ class FlowTests(unittest.TestCase):
     def test_face_detection_dependency_is_complete(self):
         self.assertTrue(hasattr(face_app.cv2, 'CascadeClassifier'))
         self.assertTrue(hasattr(face_app.cv2, 'data'))
+
+    def test_application_refuses_to_start_without_session_secret(self):
+        environment = os.environ.copy()
+        environment.pop('SESSION_SECRET', None)
+        result = subprocess.run(
+            [sys.executable, '-c', 'import app'],
+            cwd=os.path.dirname(__file__),
+            env=environment,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('SESSION_SECRET must be set', result.stderr)
 
     @patch.dict(os.environ, {
         'AI_INTEGRATIONS_OPENAI_API_KEY': 'managed-test-key',
