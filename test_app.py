@@ -2,7 +2,9 @@ import io
 import os
 import subprocess
 import sys
+import tomllib
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from PIL import Image
@@ -273,6 +275,38 @@ class FlowTests(unittest.TestCase):
         )
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('SESSION_SECRET must be set', result.stderr)
+
+    def test_master_promo_is_enabled_only_in_development_workflow(self):
+        replit_config = tomllib.loads(
+            Path(__file__).with_name('.replit').read_text(encoding='utf-8')
+        )
+        workflows = replit_config['workflows']['workflow']
+        start_workflow = next(
+            workflow
+            for workflow in workflows
+            if workflow['name'] == 'Start application'
+        )
+        development_commands = [
+            task['args']
+            for task in start_workflow['tasks']
+            if task['task'] == 'shell.exec'
+        ]
+        self.assertTrue(
+            any('PROMO_CODE=MASTER' in command for command in development_commands),
+            'The Start application development workflow must enable PROMO_CODE=MASTER',
+        )
+
+        deployment_config = repr(replit_config['deployment'])
+        self.assertNotIn(
+            'PROMO_CODE',
+            deployment_config,
+            'Production deployment configuration must not set PROMO_CODE',
+        )
+        self.assertNotIn(
+            'MASTER',
+            deployment_config,
+            'Production deployment configuration must never expose the MASTER promo code',
+        )
 
     @patch.dict(os.environ, {
         'AI_INTEGRATIONS_OPENAI_API_KEY': 'managed-test-key',
