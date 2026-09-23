@@ -11,6 +11,7 @@ from PIL import Image
 
 import app as face_app
 import openai_service
+from translations import SUPPORTED_LANGUAGES, TRANSLATIONS, get_translations
 
 
 def image_bytes(size=(640, 640)):
@@ -32,6 +33,36 @@ SAMPLE_RESULT = {
 }
 
 
+class TranslationTests(unittest.TestCase):
+    def test_every_supported_language_has_complete_interface_copy(self):
+        english_keys = set(get_translations('en'))
+        for language in SUPPORTED_LANGUAGES:
+            translated = get_translations(language)
+            self.assertEqual(set(translated), english_keys)
+            title_fragments = {
+                'ui_title_before', 'ui_title_emphasis', 'ui_title_after',
+            }
+            self.assertTrue(all(isinstance(value, str) for value in translated.values()))
+            self.assertTrue(all(value.strip() for key, value in translated.items()
+                                if key not in title_fragments))
+            self.assertTrue(''.join(translated[key] for key in title_fragments).strip())
+
+    def test_missing_keys_and_unknown_locales_fall_back_to_english(self):
+        original = TRANSLATIONS['de'].pop('ui_title_before')
+        try:
+            self.assertEqual(
+                get_translations('de')['ui_title_before'],
+                get_translations('en')['ui_title_before'],
+            )
+            self.assertEqual(get_translations('unknown'), get_translations('en'))
+        finally:
+            TRANSLATIONS['de']['ui_title_before'] = original
+
+    def test_arabic_page_declares_rtl_direction(self):
+        face_app.app.config.update(TESTING=True)
+        response = face_app.app.test_client().get('/?lang=ar')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'<html lang=\"ar\" dir=\"rtl\">', response.data)
 class FlowTests(unittest.TestCase):
     def setUp(self):
         face_app.app.config.update(TESTING=True, SECRET_KEY='test')

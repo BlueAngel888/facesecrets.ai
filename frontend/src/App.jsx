@@ -2,94 +2,91 @@ import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Camera, Check, ChevronDown, CircleAlert, FileImage, LockKeyhole, RotateCcw, Sparkles, Upload, X } from "lucide-react";
 
-const languages = { en: "English", ro: "Română", de: "Deutsch", it: "Italiano", fr: "Français", es: "Español", zh: "中文", ar: "العربية", ja: "日本語" };
-const copy = {
-  en: { title: <>Read what <em>time</em> remembers.</>, subtitle: "A private face-analysis reflection experience where ancient traditions meet modern pattern recognition.", hook: "A quiet mirror for the parts of you that are easy to overlook.", upload: "Choose a portrait", camera: "Use camera", price: "Full reflection · €29.99", analyze: "Begin private reflection", free: "Use unlocked analysis", promo: "Promo code", check: "Apply", accepted: "Access granted. Your reflection is ready to begin.", invalid: "That code did not open this door.", privacy: "Your image is processed for this session only, then removed.", processing: "The mirror is reading your portrait.", success: "Your reflection is ready.", cancel: "No charge was made.", error: "Something interrupted the reflection.", download: "Download private report", again: "Start again" },
-  ro: { title: <>Citește ce își <em>amintește</em> timpul.</>, subtitle: "O experiență privată de reflecție facială unde tradițiile antice întâlnesc recunoașterea modernă.", hook: "O oglindă liniștită pentru lucrurile ușor de trecut cu vederea.", upload: "Alege un portret", camera: "Folosește camera", price: "Reflecție completă · €29.99", analyze: "Începe reflecția privată", free: "Folosește analiza deblocată", promo: "Cod promoțional", check: "Aplică", accepted: "Acces acordat. Reflecția ta poate începe.", invalid: "Codul nu a deschis această ușă.", privacy: "Imaginea este procesată doar în această sesiune, apoi este ștearsă.", processing: "Oglinda îți citește portretul.", success: "Reflecția ta este gata.", cancel: "Nu s-a efectuat nicio plată.", error: "Ceva a întrerupt reflecția.", download: "Descarcă raportul privat", again: "Începe din nou" }
-};
-const traditions = [["01", "Chinese Mian Xiang", "The face as a 100-year map: zones, cycles, and changing seasons."], ["02", "Greek physiognomy", "Aristotle’s school of temperament and hidden potential."], ["03", "Vedic Samudrika", "Features read alongside karma, destiny, and relationships."], ["04", "Islamic Firasa", "An intuitive reading of inner light and micro-expression."], ["05", "Modern FACS / Ekman", "Scientific coding of visible emotional patterns."]];
+const defaultLanguages = { en: "English", ro: "Română", de: "Deutsch", it: "Italiano", fr: "Français", es: "Español", zh: "中文", ar: "العربية", ja: "日本語" };
 
 function postJSON(path, body) { return fetch(path, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body) }); }
 
-export default function App({ page = "home", language: initialLanguage = "en", analysis = null, error = "", navigate = url => window.location.assign(url) }) {
+export default function App({ page = "home", language: initialLanguage = "en", languages = defaultLanguages, translations = {}, analysis = null, error = "", navigate = url => window.location.assign(url) }) {
   const [language, setLanguage] = useState(initialLanguage);
   const [file, setFile] = useState(null), [preview, setPreview] = useState(""), [drag, setDrag] = useState(false);
   const [promo, setPromo] = useState(""), [promoState, setPromoState] = useState(""), [notice, setNotice] = useState("");
   const [stage, setStage] = useState("idle"), [progress, setProgress] = useState(0), [cameraOpen, setCameraOpen] = useState(false), [cameraError, setCameraError] = useState("");
   const inputRef = useRef(null), videoRef = useRef(null), streamRef = useRef(null), cameraRequestRef = useRef(0);
-  const t = copy[language] || copy.en;
+  const t = key => translations[`ui_${key}`] || key;
+  const localizedError = message => {
+    const known = {
+      "No file uploaded": "choose_first", "No file selected": "choose_first",
+      "Invalid image file": "bad_type", "Invalid file type": "bad_type",
+      "Image must be smaller than 16 MB": "too_large",
+      "Upload failed": "upload_failed", "Analysis failed": "analysis_failed",
+      "Payment setup failed": "payment_failed",
+      "Payment setup failed - no checkout URL": "payment_failed",
+    };
+    return t(known[message] || "error_detail");
+  };
+  const traditions = [1, 2, 3, 4, 5].map((number, index) => [
+    String(index + 1).padStart(2, "0"), t(`tradition_${number}_title`), t(`tradition_${number}_desc`)
+  ]);
 
   const stopCamera = () => { if (streamRef.current) streamRef.current.getTracks().forEach(track => track.stop()); streamRef.current = null; if (videoRef.current) videoRef.current.srcObject = null; };
   useEffect(() => () => { cameraRequestRef.current += 1; stopCamera(); }, []);
-  useEffect(() => { if (page === "home" && language !== initialLanguage) window.history.replaceState({}, "", `/?lang=${language}`); }, [language, initialLanguage, page]);
+  useEffect(() => {
+    document.documentElement.lang = language;
+    document.documentElement.dir = language === "ar" ? "rtl" : "ltr";
+    document.title = t("brand");
+  }, [language]);
   const validate = (candidate) => {
     if (!candidate) return;
-    if (!["image/jpeg", "image/png", "image/gif"].includes(candidate.type)) return setNotice("Please choose a JPG, PNG, or GIF image.");
-    if (candidate.size > 16 * 1024 * 1024) return setNotice("Your image must be smaller than 16 MB.");
+    if (!["image/jpeg", "image/png", "image/gif"].includes(candidate.type)) return setNotice(t("bad_type"));
+    if (candidate.size > 16 * 1024 * 1024) return setNotice(t("too_large"));
     setNotice(""); setFile(candidate); setPreview(URL.createObjectURL(candidate));
   };
   const upload = async () => {
-    if (!file) return setNotice("Choose a clear portrait before continuing.");
+    if (!file) return setNotice(t("choose_first"));
     setStage("upload"); setProgress(12); setNotice("");
     const data = new FormData(); data.append("file", file); data.append("language", language);
     try {
       const res = await fetch("/upload", { method: "POST", credentials: "include", body: data });
-      const json = await res.json().catch(() => ({})); if (!res.ok) throw new Error(json.error || "Upload failed.");
+      const json = await res.json().catch(() => ({})); if (!res.ok) throw new Error(localizedError(json.error));
       setProgress(38); setStage("analysis");
       if (promoState === "accepted") {
         setProgress(57); const free = await fetch("/free-analysis", { method: "POST", credentials: "include" }); const result = await free.json().catch(() => ({}));
-        if (!free.ok) throw new Error(result.error || "Analysis failed.");
+        if (!free.ok) throw new Error(localizedError(result.error));
         setProgress(100);
         navigate(result.redirect_url || "/success");
       } else {
         setProgress(62); const checkout = await fetch("/create-checkout-session", { method: "POST", credentials: "include", headers: { Accept: "application/json" } });
         const result = await checkout.json().catch(() => ({}));
-        if (!checkout.ok || !result.checkout_url) throw new Error(result.error || "Payment setup failed.");
+        if (!checkout.ok || !result.checkout_url) throw new Error(localizedError(result.error));
         navigate(result.checkout_url);
       }
-    } catch (error) { setNotice(error.message); setStage("error"); }
+    } catch (error) { setNotice(localizedError(error.message)); setStage("error"); }
   };
   const checkPromo = async () => { if (!promo.trim()) return; setPromoState("checking"); try { const res = await postJSON("/check-promo-code", { promo_code: promo }); const json = await res.json(); setPromoState(json.success ? "accepted" : "invalid"); } catch { setPromoState("invalid"); } };
   const openCamera = async () => {
     setCameraOpen(true); setCameraError("");
     const request = ++cameraRequestRef.current;
-    if (!navigator.mediaDevices?.getUserMedia) return setCameraError("Camera capture is not available in this browser. You can choose a portrait instead.");
+    if (!navigator.mediaDevices?.getUserMedia) return setCameraError(t("camera_denied"));
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "user" } }, audio: false });
       if (request !== cameraRequestRef.current) return stream.getTracks().forEach(track => track.stop());
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
     } catch {
-      if (request === cameraRequestRef.current) setCameraError("Camera access was not granted. You can choose a portrait instead.");
+      if (request === cameraRequestRef.current) setCameraError(t("camera_denied"));
     }
   };
   const closeCamera = () => { cameraRequestRef.current += 1; stopCamera(); setCameraOpen(false); };
-  const capture = () => { const video = videoRef.current; if (!video?.videoWidth) return setCameraError("The camera is still starting. Please wait a moment."); const canvas = document.createElement("canvas"); canvas.width = video.videoWidth; canvas.height = video.videoHeight; canvas.getContext("2d").drawImage(video, 0, 0); canvas.toBlob(blob => { if (blob) validate(new File([blob], "camera-portrait.jpg", { type: "image/jpeg" })); closeCamera(); }, "image/jpeg", .92); };
+  const capture = () => { const video = videoRef.current; if (!video?.videoWidth) return setCameraError(t("camera_starting")); const canvas = document.createElement("canvas"); canvas.width = video.videoWidth; canvas.height = video.videoHeight; canvas.getContext("2d").drawImage(video, 0, 0); canvas.toBlob(blob => { if (blob) validate(new File([blob], "camera-portrait.jpg", { type: "image/jpeg" })); closeCamera(); }, "image/jpeg", .92); };
   const reset = () => { setStage("idle"); setProgress(0); setFile(null); setPreview(""); setNotice(""); setPromoState(""); setPromo(""); };
   if (page !== "home") return <StatusPage page={page} t={t} analysis={analysis} error={error} />;
-  return <div className="shell"><header className="container nav"><a className="brand" href="/"><span className="brand-mark">a</span> Ancient Wisdom AI</a><div className="nav-tools"><span className="mono">PRIVATE BY DESIGN</span><select className="language" aria-label="Language" value={language} onChange={e => setLanguage(e.target.value)}>{Object.entries(languages).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></div></header>
-    <main><section className="container hero"><motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .7 }}><div className="eyebrow">Ancient signals · modern lens</div><h1 className="serif">{t.title}</h1><p className="hero-copy">{t.subtitle}</p><p className="hero-note">{t.hook}</p></motion.div><motion.div className="scanner" initial={{ opacity: 0, scale: .96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: .9, delay: .15 }}><div className="eyebrow">Reflection instrument / 01</div><div className="orb"><span className="scanline" /></div><div className="scanner-caption"><span>FACE / PATTERN / CONTEXT</span><span className="mono">ENCRYPTED</span></div></motion.div></section>
-      <section className="section"><div className="container"><div className="section-heading"><div className="eyebrow">Five lenses, one portrait</div><h2 className="serif">Wisdom is a conversation with context.</h2><p>We hold these traditions as reflective frameworks, not verdicts. The result is a considered prompt for self-understanding—not a diagnosis or prediction.</p></div><div className="traditions">{traditions.map(([n, title, desc]) => <article className="tradition" key={title}><span className="tradition-index mono">{n}</span><h3>{title}</h3><p>{desc}</p></article>)}</div></div></section>
-      <section className="section" id="begin"><div className="container"><div className="section-heading"><div className="eyebrow">Your private session</div><h2 className="serif">Bring a face. Leave with a question worth keeping.</h2></div>{stage !== "idle" && stage !== "error" ? <Progress stage={stage} progress={progress} t={t} /> : <div className="workbench"><div className="card"><div className={`upload-zone ${drag ? "active" : ""}`} onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={e => { e.preventDefault(); setDrag(false); validate(e.dataTransfer.files[0]); }} onClick={() => inputRef.current?.click()} role="button" tabIndex="0" onKeyDown={e => e.key === "Enter" && inputRef.current?.click()}><input ref={inputRef} type="file" accept="image/jpeg,image/png,image/gif" onChange={e => validate(e.target.files[0])} />{preview ? <img className="preview" src={preview} alt="Portrait preview" /> : <div><div className="upload-icon"><FileImage size={21} /></div><strong>{t.upload}</strong><p className="hero-note">JPG, PNG, or GIF · up to 16 MB<br />One clear, front-facing person</p></div>}</div><div className="actions"><button className="btn secondary" type="button" onClick={openCamera}><Camera size={16} /> {t.camera}</button>{preview && <button className="btn secondary" type="button" onClick={() => { setFile(null); setPreview(""); }}>Remove image</button>}</div></div><div className="card"><div className="eyebrow">Before you begin</div><h3 className="serif" style={{ fontSize: 34, fontWeight: 400 }}>A little clarity helps.</h3><div className="quality"><div className="quality-item"><span className="dot" />Face is well lit and unobstructed</div><div className="quality-item"><span className="dot" />Eyes looking toward the camera</div><div className="quality-item"><span className="dot" />No filters, sunglasses, or group photos</div></div><div className="promo"><input aria-label={t.promo} placeholder={t.promo} value={promo} onChange={e => setPromo(e.target.value)} /><button className="btn secondary" type="button" onClick={checkPromo}>{t.check}</button></div>{promoState === "accepted" && <div className="notice">{t.accepted}</div>}{promoState === "invalid" && <div className="notice error">{t.invalid}</div>}{notice && <div className="notice error"><CircleAlert size={15} /> {notice}</div>}<button className="btn" type="button" onClick={upload} style={{ width: "100%", marginTop: 22 }}>{promoState === "accepted" ? t.free : `${t.analyze} · ${t.price}`}</button><p className="hero-note" style={{ marginTop: 18 }}><LockKeyhole size={13} /> {t.privacy}</p></div></div>}</div></section></main>
-    <footer className="container footer"><span>© Ancient Wisdom AI · Reflection, not diagnosis.</span><span className="mono">NO PHOTO STORAGE · SESSION DELETION</span></footer>
-    <AnimatePresence>{cameraOpen && <motion.div className="dialog-backdrop" role="dialog" aria-modal="true" aria-label="Camera capture" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onKeyDown={e => e.key === "Escape" && closeCamera()}><motion.div className="dialog" initial={{ y: 20 }} animate={{ y: 0 }}><div className="dialog-head"><div><div className="eyebrow">Camera studio</div><h3 className="serif" style={{ fontSize: 30, margin: "8px 0 0" }}>Face the light.</h3></div><button className="icon-btn" onClick={closeCamera} aria-label="Close camera"><X /></button></div><div className="video-frame"><video className="video" ref={videoRef} autoPlay playsInline muted /><span className="camera-scan" /><div className="face-guide" /><div className="camera-quality"><span><i /> Lighting</span><span><i /> Position</span><span><i /> Distance</span></div></div>{cameraError ? <div className="notice error">{cameraError}</div> : <p className="hero-note">Center your face inside the guide and use soft, even light.</p>}<div className="actions"><button className="btn" onClick={capture} disabled={!!cameraError}><Camera size={16} /> Capture portrait</button><button className="btn secondary" onClick={closeCamera}>Cancel</button></div></motion.div></motion.div>}</AnimatePresence>
+  return <div className="shell" dir={language === "ar" ? "rtl" : "ltr"}><header className="container nav"><a className="brand" href="/"><span className="brand-mark">a</span> {t("brand")}</a><div className="nav-tools"><span className="mono">{t("private")}</span><select className="language" aria-label={t("language")} value={language} onChange={e => window.location.assign(`/?lang=${e.target.value}`)}>{Object.entries(languages).map(([key, label]) => <option key={key} value={key}>{label}</option>)}</select></div></header>
+    <main><section className="container hero"><motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: .7 }}><div className="eyebrow">{t("hero_eyebrow")}</div><h1 className="serif">{t("title_before")}<em>{t("title_emphasis")}</em>{t("title_after")}</h1><p className="hero-copy">{t("subtitle")}</p><p className="hero-note">{t("hook")}</p></motion.div><motion.div className="scanner" initial={{ opacity: 0, scale: .96 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: .9, delay: .15 }}><div className="eyebrow">{t("instrument")}</div><div className="orb"><span className="scanline" /></div><div className="scanner-caption"><span>{t("scanner_caption")}</span><span className="mono">{t("encrypted")}</span></div></motion.div></section>
+      <section className="section"><div className="container"><div className="section-heading"><div className="eyebrow">{t("lenses_eyebrow")}</div><h2 className="serif">{t("lenses_title")}</h2><p>{t("lenses_intro")}</p></div><div className="traditions">{traditions.map(([n, title, desc]) => <article className="tradition" key={n}><span className="tradition-index mono">{n}</span><h3>{title}</h3><p>{desc}</p></article>)}</div></div></section>
+      <section className="section" id="begin"><div className="container"><div className="section-heading"><div className="eyebrow">{t("session")}</div><h2 className="serif">{t("session_title")}</h2></div>{stage !== "idle" && stage !== "error" ? <Progress stage={stage} progress={progress} t={t} /> : <div className="workbench"><div className="card"><div className={`upload-zone ${drag ? "active" : ""}`} onDragOver={e => { e.preventDefault(); setDrag(true); }} onDragLeave={() => setDrag(false)} onDrop={e => { e.preventDefault(); setDrag(false); validate(e.dataTransfer.files[0]); }} onClick={() => inputRef.current?.click()} role="button" tabIndex="0" onKeyDown={e => e.key === "Enter" && inputRef.current?.click()}><input ref={inputRef} type="file" accept="image/jpeg,image/png,image/gif" onChange={e => validate(e.target.files[0])} />{preview ? <img className="preview" src={preview} alt={t("preview_alt")} /> : <div><div className="upload-icon"><FileImage size={21} /></div><strong>{t("upload")}</strong><p className="hero-note">{t("file_help")}<br />{t("portrait_help")}</p></div>}</div><div className="actions"><button className="btn secondary" type="button" onClick={openCamera}><Camera size={16} /> {t("camera")}</button>{preview && <button className="btn secondary" type="button" onClick={() => { setFile(null); setPreview(""); }}>{t("remove")}</button>}</div></div><div className="card"><div className="eyebrow">{t("before")}</div><h3 className="serif" style={{ fontSize: 34, fontWeight: 400 }}>{t("clarity")}</h3><div className="quality"><div className="quality-item"><span className="dot" />{t("quality_1")}</div><div className="quality-item"><span className="dot" />{t("quality_2")}</div><div className="quality-item"><span className="dot" />{t("quality_3")}</div></div><div className="promo"><input aria-label={t("promo")} placeholder={t("promo")} value={promo} onChange={e => setPromo(e.target.value)} /><button className="btn secondary" type="button" onClick={checkPromo}>{t("check")}</button></div>{promoState === "accepted" && <div className="notice">{t("accepted")}</div>}{promoState === "invalid" && <div className="notice error">{t("invalid")}</div>}{notice && <div className="notice error"><CircleAlert size={15} /> {notice}</div>}<button className="btn" type="button" onClick={upload} style={{ width: "100%", marginTop: 22 }}>{promoState === "accepted" ? t("free") : `${t("analyze")} · ${t("price")}`}</button><p className="hero-note" style={{ marginTop: 18 }}><LockKeyhole size={13} /> {t("privacy")}</p></div></div>}</div></section></main>
+    <footer className="container footer"><span>{t("footer")}</span><span className="mono">{t("footer_privacy")}</span></footer>
+    <AnimatePresence>{cameraOpen && <motion.div className="dialog-backdrop" role="dialog" aria-modal="true" aria-label={t("camera_studio")} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onKeyDown={e => e.key === "Escape" && closeCamera()}><motion.div className="dialog" initial={{ y: 20 }} animate={{ y: 0 }}><div className="dialog-head"><div><div className="eyebrow">{t("camera_studio")}</div><h3 className="serif" style={{ fontSize: 30, margin: "8px 0 0" }}>{t("face_light")}</h3></div><button className="icon-btn" onClick={closeCamera} aria-label={t("close_camera")}><X /></button></div><div className="video-frame"><video className="video" ref={videoRef} autoPlay playsInline muted /><span className="camera-scan" /><div className="face-guide" /><div className="camera-quality"><span><i /> {t("lighting")}</span><span><i /> {t("position")}</span><span><i /> {t("distance")}</span></div></div>{cameraError ? <div className="notice error">{cameraError}</div> : <p className="hero-note">{t("camera_help")}</p>}<div className="actions"><button className="btn" onClick={capture} disabled={!!cameraError}><Camera size={16} /> {t("capture")}</button><button className="btn secondary" onClick={closeCamera}>{t("cancel_button")}</button></div></motion.div></motion.div>}</AnimatePresence>
   </div>;
 }
-function Progress({ stage, progress, t }) { return <motion.div className="progress-wrap" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><Sparkles color="var(--gold)" size={26} /><h3 className="serif" style={{ fontSize: 48, fontWeight: 400 }}>{t.processing}</h3><p className="hero-copy" style={{ margin: "auto" }}>{stage === "upload" ? "Securing your portrait for this session." : "Comparing visible patterns across five reflective traditions."}</p><div className="progress-line"><span style={{ width: `${progress}%` }} /></div><div className="stages"><div className={`stage ${stage === "upload" ? "active" : ""}`}><strong>01</strong>Secure upload</div><div className={`stage ${stage === "analysis" ? "active" : ""}`}><strong>02</strong>Read patterns</div><div className="stage"><strong>03</strong>Prepare report</div></div></motion.div>; }
-function StatusPage({ page, t, analysis, error }) {
-  const isSuccess = page === "success";
-  const isCancel = page === "cancel";
-  return <div className="shell">
-    <header className="container nav"><a className="brand" href="/"><span className="brand-mark">a</span> Ancient Wisdom AI</a></header>
-    <main className="container result"><div>
-      <div className="eyebrow">{isSuccess ? "Session complete" : isCancel ? "Checkout" : "Session notice"}</div>
-      <h1 className="serif">{isSuccess ? t.success : isCancel ? t.cancel : t.error}</h1>
-      <p>{isSuccess ? "Your private report has been prepared. Download it now; the session will be cleared after delivery." : isCancel ? "You can return whenever the time feels right." : error || "The session could not finish safely. Your portrait was not retained."}</p>
-      {isSuccess && analysis?.executive_summary && <section className="report-preview"><div className="eyebrow">Executive Summary</div><p>{analysis.executive_summary}</p></section>}
-      <div className="actions" style={{ justifyContent: "center" }}>
-        {isSuccess && <form method="post" action="/download-pdf"><button className="btn" type="submit"><Check size={16} /> {t.download}</button></form>}
-        {isCancel ? <form method="post" action="/cancel"><button className="btn secondary" type="submit"><RotateCcw size={16} /> {t.again}</button></form> : <a className="btn secondary" href="/"><RotateCcw size={16} /> {t.again}</a>}
-      </div>
-    </div></main>
-  </div>;
-}
+function Progress({ stage, progress, t }) { return <motion.div className="progress-wrap" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><Sparkles color="var(--gold)" size={26} /><h3 className="serif" style={{ fontSize: 48, fontWeight: 400 }}>{t("processing")}</h3><p className="hero-copy" style={{ margin: "auto" }}>{stage === "upload" ? t("uploading") : t("comparing")}</p><div className="progress-line"><span style={{ width: `${progress}%` }} /></div><div className="stages"><div className={`stage ${stage === "upload" ? "active" : ""}`}><strong>01</strong>{t("stage_1")}</div><div className={`stage ${stage === "analysis" ? "active" : ""}`}><strong>02</strong>{t("stage_2")}</div><div className="stage"><strong>03</strong>{t("stage_3")}</div></div></motion.div>; }
+function StatusPage({ page, t, analysis, error }) { const isSuccess = page === "success"; const isCancel = page === "cancel"; return <div className="shell"><header className="container nav"><a className="brand" href="/"><span className="brand-mark">a</span> {t("brand")}</a></header><main className="container result"><div><div className="eyebrow">{isSuccess ? t("complete") : isCancel ? t("checkout") : t("notice")}</div><h1 className="serif">{isSuccess ? t("success") : isCancel ? t("cancel") : t("error")}</h1><p>{isSuccess ? t("success_detail") : isCancel ? t("cancel_detail") : error || t("error_detail")}</p>{isSuccess && analysis?.executive_summary && <section className="report-preview"><div className="eyebrow">{t("summary")}</div><p>{analysis.executive_summary}</p></section>}<div className="actions" style={{ justifyContent: "center" }}>{isSuccess && <form method="post" action="/download-pdf"><button className="btn" type="submit"><Check size={16} /> {t("download")}</button></form>}{isCancel ? <form method="post" action="/cancel"><button className="btn secondary" type="submit"><RotateCcw size={16} /> {t("again")}</button></form> : <a className="btn secondary" href="/"><RotateCcw size={16} /> {t("again")}</a>}</div></div></main></div>; }

@@ -4,6 +4,22 @@ import userEvent from "@testing-library/user-event";
 import { vi, test, expect, beforeEach, afterEach } from "vitest";
 import App from "./App";
 
+const translations = {
+  ui_title_before: "Read what ", ui_title_emphasis: "time", ui_title_after: " remembers.",
+  ui_language: "Language", ui_brand: "Ancient Wisdom AI", ui_private: "PRIVATE BY DESIGN",
+  ui_lenses_eyebrow: "Five lenses, one portrait", ui_analyze: "Begin private reflection",
+  ui_choose_first: "Choose a clear portrait before continuing.", ui_success: "Your reflection is ready.",
+  ui_cancel: "No charge was made.", ui_promo: "Promo code", ui_check: "Apply",
+  ui_accepted: "Access granted. Your reflection is ready to begin.", ui_free: "Use unlocked analysis",
+  ui_upload: "Choose a portrait", ui_camera: "Use camera", ui_price: "Full reflection · €29.99"
+  , ui_camera_studio: "Camera capture", ui_face_light: "Face the light.", ui_close_camera: "Close camera",
+  ui_lighting: "Lighting", ui_position: "Position", ui_distance: "Distance",
+  ui_camera_help: "Center your face inside the guide.", ui_capture: "Capture portrait",
+  ui_cancel_button: "Cancel", ui_camera_denied: "Camera access was not granted.",
+  ui_camera_starting: "The camera is still starting.", ui_preview_alt: "Portrait preview"
+};
+const renderApp = props => render(<App translations={translations} {...props} />);
+
 beforeEach(() => {
   global.fetch = vi.fn();
   URL.createObjectURL = vi.fn(() => "blob:portrait-preview");
@@ -15,23 +31,23 @@ afterEach(() => {
 });
 
 test("renders the private reflection experience and language selector", () => {
-  render(<App />);
+  renderApp();
   expect(screen.getByText(/Read what/i)).toBeInTheDocument();
   expect(screen.getByRole("combobox", { name: "Language" })).toBeInTheDocument();
   expect(screen.getByText(/Five lenses/i)).toBeInTheDocument();
 });
 
 test("shows validation notice when analysis starts without an image", async () => {
-  render(<App />);
+  renderApp();
   await userEvent.click(screen.getAllByRole("button", { name: /Begin private reflection/i })[0]);
   expect(screen.getByText(/Choose a clear portrait/i)).toBeInTheDocument();
   expect(global.fetch).not.toHaveBeenCalled();
 });
 
 test("renders completion and cancellation states", () => {
-  const { rerender } = render(<App page="success" />);
+  const { rerender } = renderApp({ page: "success" });
   expect(screen.getByText(/Your reflection is ready/i)).toBeInTheDocument();
-  rerender(<App page="cancel" />);
+  rerender(<App page="cancel" translations={translations} />);
   expect(screen.getByText(/No charge was made/i)).toBeInTheDocument();
 });
 
@@ -42,7 +58,7 @@ test("free analysis redirects to the generated report after upload", async () =>
     .mockResolvedValueOnce(new Response(JSON.stringify({ success: true }), { status: 200 }))
     .mockResolvedValueOnce(new Response(JSON.stringify({ success: true, redirect_url: "/success" }), { status: 200 }));
   const user = userEvent.setup();
-  const { container } = render(<App navigate={navigate} />);
+  const { container } = renderApp({ navigate });
 
   await user.type(screen.getByRole("textbox", { name: /Promo code/i }), "letsgo");
   await user.click(screen.getByRole("button", { name: "Apply" }));
@@ -65,7 +81,7 @@ test("opens a front-facing camera on mobile-compatible constraints and releases 
   const getUserMedia = vi.fn().mockResolvedValue(stream);
   Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia } });
   const user = userEvent.setup();
-  render(<App />);
+  renderApp();
 
   await user.click(screen.getByRole("button", { name: /Use camera/i }));
   const dialog = await screen.findByRole("dialog", { name: "Camera capture" });
@@ -81,10 +97,10 @@ test("opens a front-facing camera on mobile-compatible constraints and releases 
 
 test.each([
   ["denied", { getUserMedia: vi.fn().mockRejectedValue(new DOMException("Denied", "NotAllowedError")) }, /access was not granted/i],
-  ["unavailable", undefined, /not available in this browser/i],
+  ["unavailable", undefined, /access was not granted/i],
 ])("shows a usable fallback when camera access is %s", async (_state, mediaDevices, message) => {
   Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: mediaDevices });
-  await userEvent.click(render(<App />).getByRole("button", { name: /Use camera/i }));
+  await userEvent.click(renderApp().getByRole("button", { name: /Use camera/i }));
   expect(await screen.findByText(message)).toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Capture portrait/i })).toBeDisabled();
 });
@@ -95,7 +111,7 @@ test("stops a camera stream that resolves after the dialog was closed", async ()
   const getUserMedia = vi.fn(() => new Promise(resolve => { resolveCamera = resolve; }));
   Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia } });
   const user = userEvent.setup();
-  render(<App />);
+  renderApp();
 
   await user.click(screen.getByRole("button", { name: /Use camera/i }));
   await user.click(screen.getByRole("button", { name: "Cancel" }));
@@ -110,7 +126,7 @@ test("stops a camera stream that resolves after the component unmounts", async (
   const getUserMedia = vi.fn(() => new Promise(resolve => { resolveCamera = resolve; }));
   Object.defineProperty(navigator, "mediaDevices", { configurable: true, value: { getUserMedia } });
   const user = userEvent.setup();
-  const { unmount } = render(<App />);
+  const { unmount } = renderApp();
 
   await user.click(screen.getByRole("button", { name: /Use camera/i }));
   unmount();
@@ -129,7 +145,7 @@ test("captures the natural camera frame without mirroring the saved portrait", a
     ? { width: 0, height: 0, getContext: () => ({ drawImage }), toBlob }
     : originalCreateElement(tag));
   const user = userEvent.setup();
-  const { container } = render(<App />);
+  const { container } = renderApp();
 
   await user.click(screen.getByRole("button", { name: /Use camera/i }));
   const video = container.querySelector("video");
