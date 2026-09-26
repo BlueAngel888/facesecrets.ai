@@ -5,12 +5,33 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '@/constants/colors';
-import { mobileApi, type Analysis, type Page } from '@/lib/mobile-api';
+import { ApiError, mobileApi, type Analysis, type Page } from '@/lib/mobile-api';
+import { availableReport, buyReport, loginForReport, restoreReportPurchases } from '@/lib/revenuecat';
+import { loadDeviceCredential, loadSession, saveDeviceCredential, saveSession } from '@/lib/session-store';
+import type { PurchasesPackage } from 'react-native-purchases';
 
 const c = colors.light;
 const fallbackLanguages = { en: 'English', ro: 'Română', de: 'Deutsch', it: 'Italiano', fr: 'Français', es: 'Español', zh: '中文', ar: 'العربية', ja: '日本語' };
 type Step = 'choose' | 'upload' | 'unlock' | 'analysis' | 'result';
 type Photo = { uri: string; mimeType?: string; fileSize?: number; width: number; height: number };
+const purchaseCopy: Record<string, { buy: string; restore: string; confirm: string; question: string; later: string; verified: string; unavailable: string }> = {
+  en: { buy: 'Unlock report', restore: 'Restore a purchase', confirm: 'Confirm purchase', question: 'Buy one portrait report for', later: 'Not now', verified: 'Purchase verified. One report is unlocked.', unavailable: 'Purchases are unavailable right now. You can still use a valid promo code.' },
+  ro: { buy: 'Deblochează raportul', restore: 'Restaurează achiziția', confirm: 'Confirmă achiziția', question: 'Cumperi un raport pentru', later: 'Nu acum', verified: 'Achiziția a fost verificată. Un raport este deblocat.', unavailable: 'Achizițiile nu sunt disponibile acum. Poți folosi un cod promoțional valid.' },
+  de: { buy: 'Bericht freischalten', restore: 'Kauf wiederherstellen', confirm: 'Kauf bestätigen', question: 'Einen Porträtbericht kaufen für', later: 'Nicht jetzt', verified: 'Kauf bestätigt. Ein Bericht ist freigeschaltet.', unavailable: 'Käufe sind derzeit nicht verfügbar. Du kannst einen gültigen Aktionscode verwenden.' },
+  it: { buy: 'Sblocca il rapporto', restore: 'Ripristina acquisto', confirm: 'Conferma acquisto', question: 'Acquistare un rapporto per', later: 'Non ora', verified: 'Acquisto verificato. Un rapporto è sbloccato.', unavailable: 'Gli acquisti non sono disponibili. Puoi usare un codice promozionale valido.' },
+  fr: { buy: 'Débloquer le rapport', restore: 'Restaurer un achat', confirm: "Confirmer l'achat", question: 'Acheter un rapport pour', later: 'Pas maintenant', verified: 'Achat vérifié. Un rapport est débloqué.', unavailable: 'Les achats sont indisponibles pour le moment. Vous pouvez utiliser un code promo valide.' },
+  es: { buy: 'Desbloquear informe', restore: 'Restaurar compra', confirm: 'Confirmar compra', question: 'Comprar un informe por', later: 'Ahora no', verified: 'Compra verificada. Un informe desbloqueado.', unavailable: 'Las compras no están disponibles ahora. Puedes usar un código promocional válido.' },
+  zh: { buy: '解锁报告', restore: '恢复购买', confirm: '确认购买', question: '购买一份肖像报告，价格', later: '暂不', verified: '购买已验证，报告已解锁。', unavailable: '暂时无法购买。你仍可使用有效的优惠码。' },
+  ar: { buy: 'افتح التقرير', restore: 'استعادة الشراء', confirm: 'تأكيد الشراء', question: 'شراء تقرير صورة شخصية مقابل', later: 'ليس الآن', verified: 'تم التحقق من الشراء. تم فتح تقرير واحد.', unavailable: 'عمليات الشراء غير متاحة الآن. يمكنك استخدام رمز ترويجي صالح.' },
+  ja: { buy: 'レポートを購入', restore: '購入を復元', confirm: '購入を確認', question: 'ポートレートレポートを購入：', later: '後で', verified: '購入を確認しました。レポートを1件利用できます。', unavailable: '現在購入できません。有効なプロモーションコードは使用できます。' },
+};
+
+function ReportSection({ title, value }: { title: string; value: unknown }) {
+  if (typeof value === 'string') return <View style={styles.panel}><Text style={styles.eyebrow}>{title}</Text><Text style={styles.body}>{value}</Text></View>;
+  if (Array.isArray(value)) return <View style={styles.panel}><Text style={styles.eyebrow}>{title}</Text>{value.map((item, i) => <Text key={i} style={styles.body}>• {String(item)}</Text>)}</View>;
+  if (value && typeof value === 'object') return <View style={styles.panel}><Text style={styles.eyebrow}>{title}</Text>{Object.entries(value).map(([key, item]) => <Text key={key} style={styles.body}><Text style={{ color: c.primary }}>{key.replaceAll('_', ' ')} · </Text>{Array.isArray(item) ? item.join(' · ') : String(item)}</Text>)}</View>;
+  return null;
+}
 
 function Action({ title, icon, onPress, secondary, disabled, testID }: { title: string; icon: keyof typeof Feather.glyphMap; onPress: () => void; secondary?: boolean; disabled?: boolean; testID?: string }) {
   return <Pressable testID={testID} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.action, secondary && styles.secondary, (pressed || disabled) && { opacity: .55 }]}>
@@ -26,6 +47,9 @@ export default function Home() {
   const [step, setStep] = useState<Step>('choose');
   const [photo, setPhoto] = useState<Photo | null>(null);
   const [token, setToken] = useState('');
+  const [userId, setUserId] = useState('');
+  const [reportPackage, setReportPackage] = useState<PurchasesPackage | null>(null);
+  const [purchaseConfirm, setPurchaseConfirm] = useState(false);
   const [promo, setPromo] = useState('');
   const [accepted, setAccepted] = useState(false);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -33,12 +57,40 @@ export default function Home() {
   const [notice, setNotice] = useState('');
   const [languageOpen, setLanguageOpen] = useState(false);
   const t = (key: string, fallback: string) => page?.translations?.[`ui_${key}`] || fallback;
+  const p = purchaseCopy[language] || purchaseCopy.en;
 
   useEffect(() => {
     let alive = true;
     mobileApi.page(language).then(value => { if (alive) setPage(value); }).catch(() => { if (alive) setNotice('Language data is unavailable. Please retry.'); });
     return () => { alive = false; };
   }, [language]);
+
+  useEffect(() => {
+    let alive = true;
+    loadSession().then(async saved => {
+      if (!saved || !alive) return;
+      const result = await mobileApi.result(saved.token).catch(error => {
+        if (error instanceof ApiError && error.status === 401) return 'expired' as const;
+        if (error instanceof ApiError && error.status === 404) return null;
+        throw error;
+      });
+      if (!alive) return;
+      if (result === 'expired') { await saveSession(null); setNotice('Your previous session expired. Start a new one.'); return; }
+      setToken(saved.token); setUserId(saved.userId); setAccepted(saved.accepted);
+      if (result?.analysis) { setAnalysis(result.analysis); setStep('result'); }
+      else setStep('unlock');
+    }).catch(() => { if (alive) setNotice('Your previous session could not be restored. You can start a new one.'); });
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (step !== 'unlock' || !userId) return;
+    let alive = true;
+    loginForReport(userId).then(availableReport).then(value => {
+      if (alive) setReportPackage(value);
+    }).catch(() => { if (alive) setReportPackage(null); });
+    return () => { alive = false; };
+  }, [step, userId]);
 
   const handleError = (err: unknown) => {
     setNotice(err instanceof Error ? err.message : 'Something went wrong. Please try again.');
@@ -69,9 +121,13 @@ export default function Home() {
     if (!photo) return setNotice(t('choose_first', 'Choose a portrait first.'));
     setBusy(true); setNotice(''); setStep('upload');
     try {
-      const created = await mobileApi.session();
-      setToken(created.token);
-      await mobileApi.upload(created.token, photo.uri, language, photo.mimeType);
+      const created = token && userId
+        ? { access_token: token, rc_app_user_id: userId }
+        : await mobileApi.session(await loadDeviceCredential());
+      if (created.device_token) await saveDeviceCredential(created.device_token);
+      await mobileApi.upload(created.access_token, photo.uri, language, photo.mimeType);
+      await saveSession({ token: created.access_token, userId: created.rc_app_user_id, accepted });
+      setToken(created.access_token); setUserId(created.rc_app_user_id);
       setStep('unlock'); setPhoto(null);
     } catch (error) { setStep('choose'); handleError(error); }
     finally { setBusy(false); }
@@ -83,8 +139,39 @@ export default function Home() {
       const result = await mobileApi.promo(token, promo.trim());
       if (!result.success) throw new Error(result.message || t('invalid', 'Invalid code.'));
       setAccepted(true);
+      await saveSession({ token, userId, accepted: true });
       setNotice(t('accepted', 'Promo code accepted. One analysis unlocked.'));
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (error) { handleError(error); }
+    finally { setBusy(false); }
+  };
+  const redeem = async () => {
+    if (!token || !userId) return;
+    const result = await mobileApi.redeem(token);
+    if (!result.success) throw new Error(result.message || 'Purchase could not be verified.');
+    setAccepted(true);
+    await saveSession({ token, userId, accepted: true });
+    setNotice(p.verified);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  };
+  const purchase = async () => {
+    if (!reportPackage || !userId || !token) return;
+    setPurchaseConfirm(false); setBusy(true); setNotice('');
+    try {
+      await loginForReport(userId);
+      await buyReport(reportPackage);
+      await redeem();
+    } catch (error) {
+      if (!(error && typeof error === 'object' && 'userCancelled' in error && error.userCancelled)) handleError(error);
+    } finally { setBusy(false); }
+  };
+  const restore = async () => {
+    if (!token || !userId) return;
+    setBusy(true); setNotice('');
+    try {
+      await loginForReport(userId);
+      await restoreReportPurchases();
+      await redeem();
     } catch (error) { handleError(error); }
     finally { setBusy(false); }
   };
@@ -95,12 +182,27 @@ export default function Home() {
       const data = await mobileApi.analyze(token);
       setAnalysis(data.analysis); setStep('result');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    } catch (error) { setStep('unlock'); handleError(error); }
+    } catch (error) {
+      // An interrupted response may still mean the server finished the report.
+      const completed = await mobileApi.result(token).catch(() => null);
+      if (completed?.analysis) { setAnalysis(completed.analysis); setStep('result'); }
+      else if (error instanceof ApiError && (error.status === 400 || error.status === 422)) {
+        setStep('choose');
+        setNotice(`${error.message} Select another portrait; your unlock is still available.`);
+      } else {
+        if (error instanceof ApiError && error.status === 403) {
+          setAccepted(false);
+          await saveSession({ token, userId, accepted: false });
+        }
+        setStep('unlock'); handleError(error);
+      }
+    }
     finally { setBusy(false); }
   };
   const startOver = async () => {
     if (token) await mobileApi.cancel(token).catch(() => {});
-    setToken(''); setPromo(''); setAccepted(false); setAnalysis(null); setPhoto(null); setNotice(''); setStep('choose');
+    await saveSession(null);
+    setToken(''); setUserId(''); setReportPackage(null); setPromo(''); setAccepted(false); setAnalysis(null); setPhoto(null); setNotice(''); setStep('choose');
   };
   const retryPermissions = () => Linking.openSettings().catch(handleError);
   const languages = page?.languages || fallbackLanguages;
@@ -131,17 +233,28 @@ export default function Home() {
       {step === 'unlock' && <>
         <View style={styles.sectionHead}><Text style={styles.eyebrow}>02 / {t('session', 'YOUR SESSION')}</Text><Text style={styles.heading}>{t('analyze', 'Unlock your report')}</Text></View>
         <View style={styles.panel}><Feather name="lock" color={c.primary} size={22} /><Text style={styles.panelTitle}>Private portrait reading</Text><Text style={styles.body}>Your image is ready. A one-time promotion unlocks a complete analysis and downloadable PDF.</Text>
+          {!accepted && reportPackage && <>
+            <Text style={styles.body}>One portrait report · {reportPackage.product.priceString}</Text>
+            <Action testID="purchase-report" title={`${p.buy} · ${reportPackage.product.priceString}`} icon="credit-card" onPress={() => setPurchaseConfirm(true)} disabled={busy} />
+            <Action testID="restore-purchases" title={p.restore} icon="refresh-cw" secondary onPress={restore} disabled={busy} />
+          </>}
+          {!accepted && <Action testID="verify-purchase" title="Verify an existing purchase" icon="check-circle" secondary onPress={() => { setBusy(true); redeem().catch(handleError).finally(() => setBusy(false)); }} disabled={busy} />}
+          {!accepted && !reportPackage && <Text style={styles.muted}>{p.unavailable}</Text>}
           <TextInput testID="promo-code" value={promo} onChangeText={setPromo} placeholder={t('promo', 'Promo code')} placeholderTextColor={c.mutedForeground} style={styles.input} autoCapitalize="none" />
           <Action testID="apply-promo" title={busy ? 'Checking…' : t('check', 'Apply code')} icon="check" onPress={checkPromo} secondary disabled={busy || !promo.trim()} />
           {accepted && <Action testID="run-analysis" title={t('free', 'Start analysis')} icon="arrow-right" onPress={run} disabled={busy} />}
         </View>
-        <View style={styles.unavailable}><Feather name="info" color={c.primary} size={18} /><Text style={styles.muted}>In-app purchases are not available yet. The owner must connect RevenueCat before paid analyses can be enabled. No payment will be taken.</Text></View>
+        <View style={styles.unavailable}><Feather name="info" color={c.primary} size={18} /><Text style={styles.muted}>One purchase unlocks one portrait report. Purchases are verified before analysis. Use a valid code instead if you have one.</Text></View>
+        {purchaseConfirm && <View style={styles.panel}><Text style={styles.panelTitle}>{p.confirm}</Text><Text style={styles.body}>{p.question} {reportPackage?.product.priceString}?{__DEV__ ? ' Test Store — no real charge.' : ''}</Text><Action title={p.confirm} icon="check" onPress={purchase} /><Action title={p.later} icon="x" secondary onPress={() => setPurchaseConfirm(false)} /></View>}
         <Action title={t('cancel_button', 'Cancel session')} icon="x" onPress={startOver} secondary />
       </>}
       {step === 'analysis' && <View style={styles.wait}><ActivityIndicator color={c.primary} size="large" /><Text style={styles.heading}>{t('processing', 'Preparing your reflection')}</Text><Text style={styles.muted}>{t('comparing', 'Considering five ancient perspectives…')}</Text></View>}
       {step === 'result' && <>
         <View style={styles.sectionHead}><Text style={styles.eyebrow}>{t('complete', 'YOUR REPORT IS READY')}</Text><Text style={styles.heading}>{t('success', 'A new perspective')}</Text><Text style={styles.body}>{t('success_detail', 'Your private analysis is complete.')}</Text></View>
         <View style={styles.panel}><Text style={styles.eyebrow}>{t('summary', 'SUMMARY')}</Text><Text style={styles.body}>{String(analysis?.executive_summary || 'Your report is ready to read.')}</Text></View>
+        {analysis?.traditional_perspectives && <ReportSection title={t('lenses_title', 'FIVE PERSPECTIVES')} value={analysis.traditional_perspectives} />}
+        {analysis?.recomandari_dezvoltare && <ReportSection title={t('recommendations', 'REFLECTION PROMPTS')} value={analysis.recomandari_dezvoltare} />}
+        {analysis?.disclaimer && <ReportSection title={t('disclaimer', 'IMPORTANT CONTEXT')} value={analysis.disclaimer} />}
         <Action testID="share-report" title={t('download', 'Save or share your PDF')} icon="download" onPress={() => { setBusy(true); mobileApi.shareReport(token).catch(handleError).finally(() => setBusy(false)); }} disabled={busy} />
         <Action title={t('again', 'Start again')} icon="rotate-ccw" secondary onPress={startOver} />
       </>}

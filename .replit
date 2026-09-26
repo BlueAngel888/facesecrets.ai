@@ -1,4 +1,4 @@
-modules = ["nodejs-24", "python-3.11"]
+modules = ["nodejs-24", "python-3.11", "postgresql-16"]
 
 [deployment]
 router = "application"
@@ -22,3 +22,15 @@ timeoutMs = 20000
 [nix]
 channel = "stable-25_05"
 packages = ["freetype", "glibcLocales", "lcms2", "libimagequant", "libjpeg", "libtiff", "libwebp", "libxcrypt", "openjpeg", "tcl", "tk", "zlib"]
+
+[userenv]
+
+[userenv.shared]
+EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY = "goog_cBAkvDkTvPOgiSfqzPCSoHOmgme"
+EXPO_PUBLIC_REVENUECAT_IOS_API_KEY = "appl_mfdfwjiCMVDOUHTeTjLorkllFlt"
+EXPO_PUBLIC_REVENUECAT_TEST_API_KEY = "test_wKTKvkjMbaLIUZFcpHxLhebwjVi"
+REVENUECAT_APPLE_APP_STORE_APP_ID = "appeff5517ded"
+REVENUECAT_GOOGLE_PLAY_STORE_APP_ID = "app5b8a30f6af"
+REVENUECAT_PRODUCT_ID = "ancient_wisdom_report"
+REVENUECAT_PROJECT_ID = "proj00ce070c"
+REVENUECAT_TEST_STORE_APP_ID = "appf5c3c45982"

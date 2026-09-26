@@ -6,12 +6,15 @@ import hmac
 import time
 import hashlib
 import secrets
-import sqlite3
+import re
+import subprocess
 from collections import defaultdict, deque
 from threading import Lock
 from flask import Flask, render_template, request, jsonify, send_file, redirect, session, url_for
 from werkzeug.exceptions import RequestEntityTooLarge
 import stripe
+import psycopg2
+from psycopg2.extras import DictCursor
 from werkzeug.utils import secure_filename
 from werkzeug.middleware.proxy_fix import ProxyFix
 import uuid
@@ -67,6 +70,7 @@ REACT_BUILD = Path(app.static_folder) / 'react'
 PROMO_CODE = os.environ.get('PROMO_CODE', '').strip()
 AI_AUTHORIZATION_TTL_SECONDS = 60 * 60
 MOBILE_TOKEN_TTL_SECONDS = 24 * 60 * 60
+MOBILE_ANALYSIS_LEASE_SECONDS = 30 * 60
 MAX_TRANSLATION_CHARACTERS = 4000
 _rate_limit_events = defaultdict(deque)
 _rate_limit_lock = Lock()
@@ -177,30 +181,53 @@ def analysis_path(report_id):
     path = report_path(report_id)
     return f"{path}.json" if path else None
 
-def mobile_database_path():
-    return app.config.get(
-        'MOBILE_API_DATABASE',
-        os.environ.get('MOBILE_API_DATABASE', os.path.join(UPLOAD_FOLDER, 'mobile-api.sqlite3')),
-    )
+class MobileStorageUnavailable(RuntimeError):
+    pass
+
+
+class MobileConnection:
+    """Small execute-compatible wrapper for mobile PostgreSQL transactions."""
+
+    def __init__(self, connection):
+        self.connection = connection
+        self.cursors = []
+
+    def execute(self, statement, parameters=()):
+        cursor = self.connection.cursor(cursor_factory=DictCursor)
+        self.cursors.append(cursor)
+        cursor.execute(statement.replace('?', '%s'), parameters)
+        return cursor
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exception_type, _exception, _traceback):
+        try:
+            if exception_type:
+                self.connection.rollback()
+            else:
+                self.connection.commit()
+        finally:
+            for cursor in self.cursors:
+                cursor.close()
+            self.connection.close()
+
 
 def mobile_db():
-    connection = sqlite3.connect(mobile_database_path(), timeout=10)
-    connection.row_factory = sqlite3.Row
-    connection.execute('PRAGMA foreign_keys = ON')
-    connection.execute('''
-        CREATE TABLE IF NOT EXISTS mobile_sessions (
-            token_hash TEXT PRIMARY KEY,
-            expires_at INTEGER NOT NULL,
-            uploaded_file TEXT,
-            language TEXT,
-            grant_expires_at INTEGER,
-            grant_issued INTEGER NOT NULL DEFAULT 0,
-            grant_used INTEGER NOT NULL DEFAULT 0,
-            report_id TEXT,
-            analysis_json TEXT
-        )
-    ''')
-    return connection
+    database_url = (
+        app.config.get('MOBILE_API_DATABASE_URL')
+        or os.environ.get('DATABASE_URL')
+    )
+    if not database_url:
+        raise MobileStorageUnavailable('DATABASE_URL is required for mobile storage')
+    options = None
+    schema = app.config.get('MOBILE_API_DATABASE_SCHEMA')
+    if schema:
+        if not re.fullmatch(r'[A-Za-z_][A-Za-z0-9_]*', schema):
+            raise MobileStorageUnavailable('Invalid mobile database schema name')
+        options = f'-c search_path={schema}'
+    connection = psycopg2.connect(database_url, connect_timeout=10, options=options)
+    return MobileConnection(connection)
 
 def remove_mobile_artifacts(row):
     if not row:
@@ -224,6 +251,81 @@ def cleanup_expired_mobile_sessions():
 def mobile_token_hash(token):
     return hashlib.sha256(token.encode('utf-8')).hexdigest()
 
+def revenuecat_customer_purchases(project_id, app_user_id):
+    """Use the Node connector bridge to fetch RevenueCat resources and all purchase pages."""
+    try:
+        workspace_root = Path(__file__).resolve().parents[2]
+        helper = workspace_root / 'scripts' / 'src' / 'revenueCatPurchases.ts'
+        tsx = workspace_root / 'scripts' / 'node_modules' / '.bin' / 'tsx'
+        completed = subprocess.run(
+            [
+                str(tsx),
+                str(helper),
+                project_id,
+                app_user_id,
+                os.environ.get('REVENUECAT_PRODUCT_ID', '').strip(),
+            ],
+            cwd=str(workspace_root),
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=45,
+        )
+        if completed.returncode != 0:
+            return None
+        payload = json.loads(completed.stdout)
+        return payload if isinstance(payload, list) else None
+    except Exception:
+        # Bridge exceptions can include customer data or connector diagnostics.
+        return None
+
+def valid_revenuecat_purchase_transactions(
+    purchases, configured_product_id, test_store_app_id, production=False
+):
+    transactions = []
+    for purchase in purchases:
+        if not isinstance(purchase, dict):
+            continue
+        product = purchase.get('revenuecat_product')
+        if not isinstance(product, dict):
+            continue
+        if (
+            product.get('id') != configured_product_id
+            and product.get('store_identifier') != configured_product_id
+        ):
+            continue
+        app_id = product.get('app_id')
+        if not isinstance(app_id, str) or not app_id:
+            continue
+        if production and app_id == test_store_app_id:
+            continue
+        if not production and app_id != test_store_app_id:
+            continue
+        one_time = product.get('one_time')
+        is_consumable = (
+            product.get('type') == 'consumable'
+            or (
+                product.get('type') == 'one_time'
+                and isinstance(one_time, dict)
+                and one_time.get('is_consumable') is True
+            )
+        )
+        if (
+            not is_consumable
+            or not isinstance(product.get('id'), str)
+            or purchase.get('product_id') != product['id']
+        ):
+            continue
+        # RevenueCat v2 purchase records expose owned/refunded and a store purchase identifier.
+        if purchase.get('status') != 'owned':
+            continue
+        transaction_id = purchase.get('store_purchase_identifier')
+        if isinstance(transaction_id, (str, int)) and str(transaction_id).strip():
+            value = str(transaction_id).strip()
+            if value not in transactions:
+                transactions.append(value)
+    return transactions
+
 def authenticated_mobile_session():
     authorization = request.headers.get('Authorization', '')
     scheme, separator, token = authorization.partition(' ')
@@ -236,7 +338,7 @@ def authenticated_mobile_session():
                 'SELECT * FROM mobile_sessions WHERE token_hash = ? AND expires_at > ?',
                 (mobile_token_hash(token), int(time.time())),
             ).fetchone()
-    except sqlite3.Error:
+    except (psycopg2.Error, MobileStorageUnavailable):
         logging.exception('Unable to authenticate mobile API session')
         return None
 
@@ -649,20 +751,61 @@ def translate():
 def mobile_create_session():
     if ai_request_is_limited('mobile-session', 10, 100, 10 * 60):
         return jsonify({'error': 'Too many mobile sessions created. Please try again later.'}), 429
+    request_data = request.get_json(silent=True)
+    if request_data is None:
+        request_data = {}
+    if not isinstance(request_data, dict):
+        return jsonify({'error': 'Invalid request'}), 400
+    supplied_device_token = 'device_token' in request_data
+    device_token = request_data.get('device_token')
+    if supplied_device_token and (
+        not isinstance(device_token, str)
+        or not device_token
+        or device_token.strip() != device_token
+    ):
+        return jsonify({'error': 'Valid device token required'}), 401
+
     try:
         cleanup_expired_mobile_sessions()
-    except sqlite3.Error:
+    except (psycopg2.Error, MobileStorageUnavailable):
         logging.exception('Unable to clean up expired mobile sessions')
         return jsonify({'error': 'Mobile session storage is unavailable'}), 503
     token = secrets.token_urlsafe(32)
     expires_at = int(time.time()) + MOBILE_TOKEN_TTL_SECONDS
+    if not supplied_device_token:
+        device_token = secrets.token_urlsafe(32)
+        device_token_hash = mobile_token_hash(device_token)
+        rc_app_user_id = str(uuid.uuid4())
+    else:
+        device_token_hash = mobile_token_hash(device_token)
     try:
         with mobile_db() as connection:
+            if supplied_device_token:
+                device = connection.execute(
+                    '''SELECT rc_app_user_id FROM mobile_devices
+                       WHERE device_token_hash = ?''',
+                    (device_token_hash,),
+                ).fetchone()
+                if not device:
+                    return jsonify({'error': 'Valid device token required'}), 401
+                rc_app_user_id = device['rc_app_user_id']
+            else:
+                connection.execute(
+                    '''INSERT INTO mobile_devices
+                       (device_token_hash, rc_app_user_id, created_at)
+                       VALUES (?, ?, ?)''',
+                    (device_token_hash, rc_app_user_id, int(time.time())),
+                )
             connection.execute(
-                'INSERT INTO mobile_sessions (token_hash, expires_at) VALUES (?, ?)',
-                (mobile_token_hash(token), expires_at),
+                '''INSERT INTO mobile_sessions
+                   (token_hash, expires_at, device_token_hash, rc_app_user_id)
+                   VALUES (?, ?, ?, ?)''',
+                (
+                    mobile_token_hash(token), expires_at, device_token_hash,
+                    rc_app_user_id,
+                ),
             )
-    except sqlite3.Error:
+    except (psycopg2.Error, MobileStorageUnavailable):
         logging.exception('Unable to create mobile API session')
         return jsonify({'error': 'Unable to create session'}), 503
     response = jsonify({
@@ -670,6 +813,8 @@ def mobile_create_session():
         'token_type': 'Bearer',
         'expires_at': expires_at,
         'expires_in': MOBILE_TOKEN_TTL_SECONDS,
+        'device_token': device_token,
+        'rc_app_user_id': rc_app_user_id,
     })
     response.headers['Cache-Control'] = 'private, no-store'
     return response, 201
@@ -697,7 +842,6 @@ def mobile_upload():
         if not mobile_image_is_valid(filepath, uploaded.filename):
             return jsonify({'error': 'Invalid image file or dimensions'}), 400
         with mobile_db() as connection:
-            connection.execute('BEGIN IMMEDIATE')
             previous = connection.execute(
                 'SELECT uploaded_file, report_id FROM mobile_sessions WHERE token_hash = ? AND expires_at > ?',
                 (mobile_session['token_hash'], int(time.time())),
@@ -746,12 +890,16 @@ def mobile_check_promo():
 
     grant_expiry = int(time.time()) + AI_AUTHORIZATION_TTL_SECONDS
     with mobile_db() as connection:
-        connection.execute('BEGIN IMMEDIATE')
         updated = connection.execute(
             '''UPDATE mobile_sessions
-               SET grant_expires_at = ?, grant_issued = 1, grant_used = 0
-               WHERE token_hash = ? AND expires_at > ? AND grant_issued = 0''',
-            (grant_expiry, mobile_session['token_hash'], int(time.time())),
+               SET grant_expires_at = ?, grant_issued = 1, grant_used = 0,
+                   promo_issued = 1
+               WHERE token_hash = ? AND expires_at > ? AND promo_issued = 0
+                 AND grant_used <> 2
+                 AND (
+                     grant_issued = 0 OR grant_used = 1 OR grant_expires_at < ?
+                 )''',
+            (grant_expiry, mobile_session['token_hash'], int(time.time()), int(time.time())),
         ).rowcount
     if not updated:
         return jsonify({
@@ -766,6 +914,101 @@ def mobile_check_promo():
         'expires_at': grant_expiry,
     })
 
+@app.route('/api/mobile/redeem', methods=['POST'])
+def mobile_redeem_purchase():
+    mobile_session = authenticated_mobile_session()
+    if not mobile_session:
+        return jsonify({'error': 'Valid bearer token required'}), 401
+    if ai_request_is_limited('mobile-redeem', 10, 100, 10 * 60):
+        return jsonify({'error': 'Too many redemption attempts. Please try again later.'}), 429
+
+    project_id = os.environ.get('REVENUECAT_PROJECT_ID', '').strip()
+    product_id = os.environ.get('REVENUECAT_PRODUCT_ID', '').strip()
+    test_store_app_id = os.environ.get('REVENUECAT_TEST_STORE_APP_ID', '').strip()
+    if (
+        not project_id
+        or not product_id
+        or not test_store_app_id
+        or not mobile_session['rc_app_user_id']
+    ):
+        return jsonify({'error': 'Purchase verification is not configured.'}), 503
+
+    verified_purchases = revenuecat_customer_purchases(
+        project_id, mobile_session['rc_app_user_id']
+    )
+    if verified_purchases is None:
+        return jsonify({'error': 'Purchase verification is temporarily unavailable.'}), 503
+    transactions = valid_revenuecat_purchase_transactions(
+        verified_purchases,
+        product_id,
+        test_store_app_id,
+        production=bool(os.environ.get('REPLIT_DEPLOYMENT')),
+    )
+    if not transactions:
+        return jsonify({'error': 'No valid, non-refunded consumable purchase was found.'}), 402
+
+    now = int(time.time())
+    grant_expiry = now + AI_AUTHORIZATION_TTL_SECONDS
+    try:
+        with mobile_db() as connection:
+            current = connection.execute(
+                '''SELECT grant_issued, grant_used, grant_expires_at, expires_at
+                   FROM mobile_sessions
+                   WHERE token_hash = ? AND expires_at > ?
+                   FOR UPDATE''',
+                (mobile_session['token_hash'], now),
+            ).fetchone()
+            if not current:
+                return jsonify({'error': 'Mobile session has expired.'}), 401
+            if (
+                current['grant_issued']
+                and (
+                    current['grant_used'] == 2
+                    or (
+                        not current['grant_used']
+                        and current['grant_expires_at']
+                        and current['grant_expires_at'] >= now
+                    )
+                )
+            ):
+                return jsonify({
+                    'error': 'This mobile session already has an unused analysis grant.'
+                }), 409
+            transaction_id = None
+            for candidate in transactions:
+                inserted = connection.execute(
+                    '''INSERT INTO mobile_purchase_redemptions
+                       (transaction_id, token_hash, redeemed_at)
+                       VALUES (?, ?, ?) ON CONFLICT (transaction_id) DO NOTHING
+                       RETURNING transaction_id''',
+                    (candidate, mobile_session['token_hash'], now),
+                ).fetchone()
+                if inserted:
+                    transaction_id = candidate
+                    break
+            if not transaction_id:
+                return jsonify({'error': 'No unredeemed consumable purchase was found.'}), 409
+            grant_issued = connection.execute(
+                '''UPDATE mobile_sessions
+                   SET grant_expires_at = ?, grant_issued = 1, grant_used = 0
+                   WHERE token_hash = ? AND expires_at > ?''',
+                (grant_expiry, mobile_session['token_hash'], now),
+            ).rowcount
+            if grant_issued != 1:
+                raise RuntimeError('Mobile grant could not be issued')
+    except psycopg2.IntegrityError:
+        return jsonify({'error': 'This purchase has already been redeemed.'}), 409
+    except (psycopg2.Error, MobileStorageUnavailable):
+        logging.error('Unable to persist mobile purchase redemption')
+        return jsonify({'error': 'Purchase redemption storage is unavailable.'}), 503
+
+    return jsonify({
+        'success': True,
+        'message': 'Purchase verified. One analysis is unlocked.',
+        'free_analysis': True,
+        'expires_at': grant_expiry,
+    })
+
 @app.route('/api/mobile/analyze', methods=['POST'])
 def mobile_analyze():
     mobile_session = authenticated_mobile_session()
@@ -773,43 +1016,47 @@ def mobile_analyze():
         return jsonify({'error': 'Valid bearer token required'}), 401
     if ai_request_is_limited('mobile-analysis', 2, 30, 60 * 60):
         return jsonify({'error': 'Analysis limit reached. Please try again later.'}), 429
-    now = int(time.time())
-    with mobile_db() as connection:
-        grant = connection.execute(
-            '''SELECT grant_issued, grant_used, grant_expires_at
-               FROM mobile_sessions WHERE token_hash = ? AND expires_at > ?''',
-            (mobile_session['token_hash'], now),
-        ).fetchone()
-    if (
-        not grant
-        or not grant['grant_issued']
-        or grant['grant_used']
-        or not grant['grant_expires_at']
-        or grant['grant_expires_at'] < now
-    ):
-        return jsonify({'error': 'A valid, unused promo grant is required.'}), 403
+
     filepath = uploaded_path(mobile_session['uploaded_file'])
     if not filepath or not os.path.isfile(filepath):
         return jsonify({'error': 'Upload a valid portrait before analysis.'}), 400
 
+    now = int(time.time())
+    lease_expires_at = now + MOBILE_ANALYSIS_LEASE_SECONDS
     with mobile_db() as connection:
-        connection.execute('BEGIN IMMEDIATE')
-        consumed = connection.execute(
-            '''UPDATE mobile_sessions SET grant_used = 1
-               WHERE token_hash = ? AND expires_at > ?
-                 AND grant_issued = 1 AND grant_used = 0 AND grant_expires_at >= ?''',
-            (mobile_session['token_hash'], now, now),
-        ).rowcount
-        if consumed:
+        claim = connection.execute(
+            '''UPDATE mobile_sessions
+               SET grant_used = 2, grant_expires_at = ?
+               WHERE token_hash = ? AND expires_at > ? AND grant_issued = 1
+                 AND (
+                     (grant_used = 0 AND grant_expires_at >= ?)
+                     OR (grant_used = 2 AND grant_expires_at < ?)
+                 )
+               RETURNING language''',
+            (
+                lease_expires_at, mobile_session['token_hash'], now, now, now,
+            ),
+        ).fetchone()
+        if claim:
+            language = claim['language'] or 'en'
+        else:
             current = connection.execute(
-                'SELECT language FROM mobile_sessions WHERE token_hash = ?',
-                (mobile_session['token_hash'],),
+                '''SELECT grant_issued, grant_used, grant_expires_at
+                   FROM mobile_sessions WHERE token_hash = ? AND expires_at > ?''',
+                (mobile_session['token_hash'], now),
             ).fetchone()
-            language = current['language'] or 'en'
-    if not consumed:
-        return jsonify({'error': 'A valid, unused promo grant is required.'}), 403
+            if (
+                current
+                and current['grant_issued']
+                and current['grant_used'] == 2
+                and current['grant_expires_at']
+                and current['grant_expires_at'] >= now
+            ):
+                return jsonify({'error': 'An analysis is already in progress.'}), 409
+            return jsonify({'error': 'A valid, unused analysis grant is required.'}), 403
 
     created_report = None
+    analysis_committed = False
     try:
         face_data = detect_face_landmarks(filepath)
         if not face_data:
@@ -825,12 +1072,18 @@ def mobile_analyze():
         encoded_result = json.dumps(result, ensure_ascii=False)
         with mobile_db() as connection:
             updated = connection.execute(
-                '''UPDATE mobile_sessions SET report_id = ?, analysis_json = ?, uploaded_file = NULL
-                   WHERE token_hash = ? AND expires_at > ?''',
-                (created_report, encoded_result, mobile_session['token_hash'], int(time.time())),
+                '''UPDATE mobile_sessions
+                   SET report_id = ?, analysis_json = ?, uploaded_file = NULL, grant_used = 1
+                   WHERE token_hash = ? AND expires_at > ?
+                     AND grant_used = 2 AND grant_expires_at = ?''',
+                (
+                    created_report, encoded_result, mobile_session['token_hash'],
+                    int(time.time()), lease_expires_at,
+                ),
             ).rowcount
         if not updated:
-            raise RuntimeError('Mobile session expired before analysis completed.')
+            raise RuntimeError('Mobile analysis lease was lost before completion.')
+        analysis_committed = True
         response = jsonify({
             'success': True,
             'analysis': result,
@@ -842,8 +1095,25 @@ def mobile_analyze():
         logging.exception('Mobile analysis failed')
         if created_report:
             safe_remove(report_path(created_report))
-        return jsonify({'error': 'Analysis failed. The promo grant has been consumed.'}), 500
+        return jsonify({'error': 'Analysis failed. Your grant is available to retry.'}), 500
     finally:
+        if not analysis_committed:
+            try:
+                with mobile_db() as connection:
+                    connection.execute(
+                        '''UPDATE mobile_sessions
+                           SET grant_used = 0, grant_expires_at = ?
+                           WHERE token_hash = ? AND grant_used = 2
+                             AND grant_expires_at = ?''',
+                        (
+                            int(time.time()) + AI_AUTHORIZATION_TTL_SECONDS,
+                            mobile_session['token_hash'],
+                            lease_expires_at,
+                        ),
+                    )
+            except Exception:
+                # A process or storage failure leaves the lease reclaimable after expiry.
+                logging.error('Unable to release failed mobile analysis grant')
         safe_remove(filepath)
 
 @app.route('/api/mobile/result', methods=['GET'])
@@ -867,8 +1137,23 @@ def mobile_report():
     if not mobile_session:
         return jsonify({'error': 'Valid bearer token required'}), 401
     filepath = report_path(mobile_report_id_for(mobile_session))
-    if not filepath or not os.path.isfile(filepath):
+    if not filepath or not mobile_session['analysis_json']:
         return jsonify({'error': 'No PDF report is available'}), 404
+    if not os.path.isfile(filepath):
+        temporary_path = f'{filepath}.{uuid.uuid4().hex}.tmp'
+        try:
+            # Reports can be reconstructed from the persisted analysis after a
+            # server restart; temp files are not durable across deployments.
+            generate_analysis_pdf(
+                json.loads(mobile_session['analysis_json']),
+                temporary_path,
+                mobile_session['language'] or 'en',
+            )
+            os.replace(temporary_path, filepath)
+        except Exception:
+            safe_remove(temporary_path)
+            logging.exception('Unable to reconstruct mobile PDF report')
+            return jsonify({'error': 'Report is temporarily unavailable'}), 503
     response = send_file(
         filepath, as_attachment=True, download_name='portrait_reflection_report.pdf',
         mimetype='application/pdf', max_age=0,

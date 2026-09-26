@@ -4,6 +4,9 @@ import { Platform } from 'react-native';
 
 export type Analysis = Record<string, unknown> & { executive_summary?: string };
 export type Page = { languages: Record<string, string>; translations: Record<string, string> };
+export class ApiError extends Error {
+  constructor(message: string, readonly status: number) { super(message); }
+}
 
 const host = process.env.EXPO_PUBLIC_DOMAIN;
 const base = host ? `https://${host}/api` : '/api';
@@ -11,7 +14,7 @@ const base = host ? `https://${host}/api` : '/api';
 async function response<T>(res: Response): Promise<T> {
   if (res.ok) return res.json() as Promise<T>;
   const body = await res.json().catch(() => ({})) as { error?: string };
-  throw new Error(body.error || `Request failed (${res.status})`);
+  throw new ApiError(body.error || `Request failed (${res.status})`, res.status);
 }
 
 async function authed<T>(path: string, token: string, method = 'GET', body?: FormData | object): Promise<T> {
@@ -25,7 +28,11 @@ async function authed<T>(path: string, token: string, method = 'GET', body?: For
 
 export const mobileApi = {
   page: async (language: string) => response<Page>(await fetch(`${base}/page?lang=${encodeURIComponent(language)}`)),
-  session: async () => response<{ token: string }>(await fetch(`${base}/mobile/session`, { method: 'POST' })),
+  session: async (deviceToken?: string | null) => response<{ access_token: string; rc_app_user_id: string; device_token?: string }>(await fetch(`${base}/mobile/session`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(deviceToken ? { device_token: deviceToken } : {}),
+  })),
   upload: (token: string, uri: string, language: string, type = 'image/jpeg') => {
     const form = new FormData();
     form.append('language', language);
@@ -39,6 +46,7 @@ export const mobileApi = {
     return authed<{ success: boolean }>('upload', token, 'POST', form);
   },
   promo: (token: string, promo_code: string) => authed<{ success: boolean; message?: string }>('promo', token, 'POST', { promo_code }),
+  redeem: (token: string) => authed<{ success: boolean; message?: string }>('redeem', token, 'POST'),
   analyze: (token: string) => authed<{ analysis: Analysis; success: boolean }>('analyze', token, 'POST'),
   result: (token: string) => authed<{ analysis: Analysis }>('result', token),
   cancel: (token: string) => authed<{ success: boolean }>('cancel', token, 'POST'),

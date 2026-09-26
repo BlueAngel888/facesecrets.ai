@@ -1,0 +1,1 @@
+- [RevenueCat store isolation](revenuecat-store-isolation.md) — Test Store and native products may share an identifier; purchase verification must distinguish their apps and deployment modes.

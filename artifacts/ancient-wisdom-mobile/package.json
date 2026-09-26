@@ -59,6 +59,7 @@
     "@expo-google-fonts/instrument-serif": "^0.4.1",
     "@expo-google-fonts/space-mono": "^0.4.2",
     "expo-file-system": "^57.0.7",
+    "expo-secure-store": "~57.0.4",
     "expo-sharing": "^57.0.22",
     "react-native-purchases": "^10.10.2"
   }

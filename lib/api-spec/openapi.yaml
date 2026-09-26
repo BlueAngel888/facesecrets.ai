@@ -144,7 +144,13 @@ paths:
     post:
       operationId: createMobileSession
       summary: Create a short-lived mobile bearer session
-      description: Returns an opaque token. The server stores only a hash of the token.
+      description: Returns a short-lived bearer token and a long-lived per-device credential. Send the device token on later session creation to recover the same server-owned RevenueCat identity; client-supplied RevenueCat IDs are never trusted.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MobileSessionCreate"
       responses:
         "201":
           description: Mobile session created
@@ -152,6 +158,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/MobileSession"
+        "401":
+          description: Supplied device token is invalid
   /mobile/upload:
     post:
       operationId: uploadMobilePortrait
@@ -207,8 +215,8 @@ paths:
       operationId: analyzeMobilePortrait
       security:
         - bearerAuth: []
-      summary: Consume a one-use server-issued promo grant to analyze the uploaded portrait
-      description: Client-submitted purchase or payment claims do not authorize analysis.
+      summary: Consume a one-use server-issued grant to analyze the uploaded portrait
+      description: Client-submitted purchase or payment claims do not authorize analysis. The grant is atomically reserved during work; failed analysis releases it for retry, and an abandoned reservation can be reclaimed after its lease expires.
       responses:
         "200":
           description: Analysis and private report URL
@@ -221,11 +229,41 @@ paths:
         "401":
           description: Missing or invalid bearer token
         "403":
-          description: No unexpired unused promo grant
+          description: No unexpired unused promo or purchase grant
+        "409":
+          description: Another analysis is already in progress for this session
         "422":
           description: No clear frontal face detected
+        "500":
+          description: Analysis or report generation failed; the grant is released for retry
+        "503":
+          description: Analysis service unavailable; the grant is released for retry
         "429":
           description: Analysis requests are rate limited
+  /mobile/redeem:
+    post:
+      operationId: redeemMobilePurchase
+      security:
+        - bearerAuth: []
+      summary: Verify a configured consumable purchase and exchange it for one analysis grant
+      description: The server obtains the RevenueCat customer ID from the bearer session and verifies purchases through the connected RevenueCat API. Client-submitted transaction IDs or entitlement claims are ignored. Each globally unique, unredeemed purchase can fund one analysis after any previous grant is consumed.
+      responses:
+        "200":
+          description: Purchase verified and one analysis grant issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobilePurchaseRedemption"
+        "401":
+          description: Missing or invalid bearer token
+        "402":
+          description: No valid, non-refunded configured consumable purchase was found
+        "409":
+          description: Purchase was already redeemed or session already received a grant
+        "429":
+          description: Redemption attempts are rate limited
+        "503":
+          description: Purchase verification or redemption storage is unavailable
   /mobile/result:
     get:
       operationId: getMobileAnalysisResult
@@ -353,18 +391,33 @@ components:
         translated_text: { type: string }
     MobileSession:
       type: object
-      required: [access_token, token_type, expires_at, expires_in]
+      required: [access_token, device_token, rc_app_user_id, token_type, expires_at, expires_in]
       properties:
         access_token: { type: string, description: Opaque bearer token; keep private on the device. }
+        device_token: { type: string, description: Long-lived opaque device credential; persist in platform secure storage and submit to recover the server-owned RevenueCat identity. }
+        rc_app_user_id: { type: string, format: uuid, description: Stable RevenueCat customer ID associated with the device. }
         token_type: { type: string, enum: [Bearer] }
         expires_at: { type: integer, description: Unix timestamp when the token expires. }
         expires_in: { type: integer, description: Token lifetime in seconds. }
+    MobileSessionCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        device_token: { type: string, description: Previously issued per-device credential. Omit only when creating a new device identity. }
     MobileActionResult:
       type: object
       additionalProperties: true
       properties:
         success: { type: boolean }
         message: { type: string }
+    MobilePurchaseRedemption:
+      type: object
+      required: [success, message, free_analysis, expires_at]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        free_analysis: { type: boolean }
+        expires_at: { type: integer, description: Unix timestamp when this one-use analysis grant expires. }
     MobileAnalysisResult:
       type: object
       required: [success, analysis, report_url]
