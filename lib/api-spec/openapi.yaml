@@ -140,7 +140,146 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TranslationResult"
+  /mobile/session:
+    post:
+      operationId: createMobileSession
+      summary: Create a short-lived mobile bearer session
+      description: Returns an opaque token. The server stores only a hash of the token.
+      responses:
+        "201":
+          description: Mobile session created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileSession"
+  /mobile/upload:
+    post:
+      operationId: uploadMobilePortrait
+      security:
+        - bearerAuth: []
+      summary: Upload a portrait for this mobile session
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/PortraitUpload"
+      responses:
+        "200":
+          description: Portrait validated and stored temporarily
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileActionResult"
+        "400":
+          description: Missing, invalid, unsupported, or incorrectly sized image
+        "401":
+          description: Missing or invalid bearer token
+        "413":
+          description: Upload exceeds the 16 MiB request limit
+  /mobile/promo:
+    post:
+      operationId: validateMobilePromo
+      security:
+        - bearerAuth: []
+      summary: Exchange the configured promo code for a one-use analysis grant
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromoCodeInput"
+      responses:
+        "200":
+          description: Promo accepted or rejected
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromoCodeResult"
+        "401":
+          description: Missing or invalid bearer token
+        "409":
+          description: This session has already received its one promo grant
+        "429":
+          description: Promo attempts are rate limited
+  /mobile/analyze:
+    post:
+      operationId: analyzeMobilePortrait
+      security:
+        - bearerAuth: []
+      summary: Consume a one-use server-issued promo grant to analyze the uploaded portrait
+      description: Client-submitted purchase or payment claims do not authorize analysis.
+      responses:
+        "200":
+          description: Analysis and private report URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileAnalysisResult"
+        "400":
+          description: No portrait is available
+        "401":
+          description: Missing or invalid bearer token
+        "403":
+          description: No unexpired unused promo grant
+        "422":
+          description: No clear frontal face detected
+        "429":
+          description: Analysis requests are rate limited
+  /mobile/result:
+    get:
+      operationId: getMobileAnalysisResult
+      security:
+        - bearerAuth: []
+      summary: Read the completed analysis for this mobile session
+      responses:
+        "200":
+          description: Completed analysis
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileAnalysisResult"
+        "401":
+          description: Missing or invalid bearer token
+        "404":
+          description: No analysis is available
+  /mobile/report:
+    get:
+      operationId: getMobileReport
+      security:
+        - bearerAuth: []
+      summary: Download the private PDF report for this mobile session
+      responses:
+        "200":
+          description: PDF report
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+        "401":
+          description: Missing or invalid bearer token
+        "404":
+          description: No report is available
+  /mobile/cancel:
+    post:
+      operationId: cancelMobileSession
+      security:
+        - bearerAuth: []
+      summary: Revoke this mobile session and remove its temporary portrait and report
+      responses:
+        "200":
+          description: Session and owned temporary data removed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MobileActionResult"
+        "401":
+          description: Missing or invalid bearer token
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
   schemas:
     HealthStatus:
       type: object
@@ -212,3 +351,26 @@ components:
       required: [translated_text]
       properties:
         translated_text: { type: string }
+    MobileSession:
+      type: object
+      required: [access_token, token_type, expires_at, expires_in]
+      properties:
+        access_token: { type: string, description: Opaque bearer token; keep private on the device. }
+        token_type: { type: string, enum: [Bearer] }
+        expires_at: { type: integer, description: Unix timestamp when the token expires. }
+        expires_in: { type: integer, description: Token lifetime in seconds. }
+    MobileActionResult:
+      type: object
+      additionalProperties: true
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+    MobileAnalysisResult:
+      type: object
+      required: [success, analysis, report_url]
+      properties:
+        success: { type: boolean }
+        analysis:
+          type: object
+          additionalProperties: true
+        report_url: { type: string }

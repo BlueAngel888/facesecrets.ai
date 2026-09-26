@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Ancient Wisdom",
+    "slug": "ancient-wisdom-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "ancient-wisdom",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.ancientwisdom.portrait",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Take a portrait for your private reflection report.",
+        "NSPhotoLibraryUsageDescription": "Choose a portrait for your private reflection report."
+      }
+    },
+    "android": {
+      "package": "com.ancientwisdom.portrait",
+      "permissions": ["CAMERA"]
+    },
+    "splash": {
+      "image": "./assets/images/icon.png",
+      "backgroundColor": "#080b12",
+      "resizeMode": "contain"
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": ["expo-router", ["expo-image-picker", {
+      "photosPermission": "Choose a portrait for your private reflection report.",
+      "cameraPermission": "Take a portrait for your private reflection report."
+    }]],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}

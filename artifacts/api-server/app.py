@@ -4,6 +4,9 @@ import json
 import base64
 import hmac
 import time
+import hashlib
+import secrets
+import sqlite3
 from collections import defaultdict, deque
 from threading import Lock
 from flask import Flask, render_template, request, jsonify, send_file, redirect, session, url_for
@@ -63,6 +66,7 @@ REACT_BUILD = Path(app.static_folder) / 'react'
 
 PROMO_CODE = os.environ.get('PROMO_CODE', '').strip()
 AI_AUTHORIZATION_TTL_SECONDS = 60 * 60
+MOBILE_TOKEN_TTL_SECONDS = 24 * 60 * 60
 MAX_TRANSLATION_CHARACTERS = 4000
 _rate_limit_events = defaultdict(deque)
 _rate_limit_lock = Lock()
@@ -91,6 +95,63 @@ def request_source_is_same_origin():
         expected_url.netloc.lower(),
     )
 
+def configured_expo_origin():
+    configured_domain = os.environ.get('REPLIT_EXPO_DEV_DOMAIN', '').strip()
+    if not configured_domain:
+        return None
+    try:
+        if '://' in configured_domain:
+            parsed = urlsplit(configured_domain)
+            if parsed.scheme.lower() != 'https':
+                return None
+        else:
+            if any(char in configured_domain for char in '/?#'):
+                return None
+            parsed = urlsplit(f'https://{configured_domain}')
+        if (
+            not parsed.netloc
+            or not parsed.hostname
+            or parsed.username
+            or parsed.password
+            or parsed.path not in ('', '/')
+            or parsed.query
+            or parsed.fragment
+        ):
+            return None
+        parsed.port
+    except ValueError:
+        return None
+    return f'https://{parsed.netloc.lower()}'
+
+def is_allowed_expo_origin(origin):
+    allowed_origin = configured_expo_origin()
+    if not allowed_origin or not origin:
+        return False
+    try:
+        parsed = urlsplit(origin)
+        return (
+            parsed.scheme.lower() == 'https'
+            and parsed.netloc.lower() == allowed_origin[len('https://'):]
+            and parsed.hostname is not None
+            and not parsed.username
+            and not parsed.password
+            and parsed.path == ''
+            and not parsed.query
+            and not parsed.fragment
+        )
+    except ValueError:
+        return False
+
+def is_expo_cors_resource():
+    return request.path.startswith('/api/mobile/') or request.path == '/api/page'
+
+def apply_expo_cors_headers(response, origin):
+    response.headers['Access-Control-Allow-Origin'] = origin
+    vary_values = response.headers.get('Vary', '').split(',')
+    if 'origin' not in {value.strip().lower() for value in vary_values}:
+        response.headers.add('Vary', 'Origin')
+    return response
+
 def safe_remove(path):
     if path:
         try:
@@ -115,6 +176,95 @@ def report_path(report_id):
 def analysis_path(report_id):
     path = report_path(report_id)
     return f"{path}.json" if path else None
+
+def mobile_database_path():
+    return app.config.get(
+        'MOBILE_API_DATABASE',
+        os.environ.get('MOBILE_API_DATABASE', os.path.join(UPLOAD_FOLDER, 'mobile-api.sqlite3')),
+    )
+
+def mobile_db():
+    connection = sqlite3.connect(mobile_database_path(), timeout=10)
+    connection.row_factory = sqlite3.Row
+    connection.execute('PRAGMA foreign_keys = ON')
+    connection.execute('''
+        CREATE TABLE IF NOT EXISTS mobile_sessions (
+            token_hash TEXT PRIMARY KEY,
+            expires_at INTEGER NOT NULL,
+            uploaded_file TEXT,
+            language TEXT,
+            grant_expires_at INTEGER,
+            grant_issued INTEGER NOT NULL DEFAULT 0,
+            grant_used INTEGER NOT NULL DEFAULT 0,
+            report_id TEXT,
+            analysis_json TEXT
+        )
+    ''')
+    return connection
+
+def remove_mobile_artifacts(row):
+    if not row:
+        return
+    safe_remove(uploaded_path(row['uploaded_file']))
+    if row['report_id']:
+        safe_remove(report_path(row['report_id']))
+        safe_remove(analysis_path(row['report_id']))
+
+def cleanup_expired_mobile_sessions():
+    now = int(time.time())
+    with mobile_db() as connection:
+        rows = connection.execute(
+            'SELECT uploaded_file, report_id FROM mobile_sessions WHERE expires_at <= ?',
+            (now,),
+        ).fetchall()
+        connection.execute('DELETE FROM mobile_sessions WHERE expires_at <= ?', (now,))
+    for row in rows:
+        remove_mobile_artifacts(row)
+
+def mobile_token_hash(token):
+    return hashlib.sha256(token.encode('utf-8')).hexdigest()
+
+def authenticated_mobile_session():
+    authorization = request.headers.get('Authorization', '')
+    scheme, separator, token = authorization.partition(' ')
+    if not separator or scheme.lower() != 'bearer' or not token or token.strip() != token:
+        return None
+    try:
+        cleanup_expired_mobile_sessions()
+        with mobile_db() as connection:
+            return connection.execute(
+                'SELECT * FROM mobile_sessions WHERE token_hash = ? AND expires_at > ?',
+                (mobile_token_hash(token), int(time.time())),
+            ).fetchone()
+    except sqlite3.Error:
+        logging.exception('Unable to authenticate mobile API session')
+        return None
+
+def mobile_image_is_valid(path, original_filename):
+    if not allowed_file(original_filename):
+        return False
+    try:
+        with Image.open(path) as image:
+            image.verify()
+        with Image.open(path) as image:
+            if image.format not in {'JPEG', 'PNG', 'GIF'}:
+                return False
+            if image.width < 256 or image.height < 256:
+                return False
+            if image.width * image.height > 40_000_000:
+                return False
+            image = image.convert('RGB')
+            image.thumbnail((2400, 2400))
+            image.save(path + '.normalized.jpg', 'JPEG', quality=92, optimize=True)
+        os.replace(path + '.normalized.jpg', path)
+        return True
+    except Exception:
+        safe_remove(path)
+        safe_remove(path + '.normalized.jpg')
+        return False
+
+def mobile_report_id_for(row):
+    return row['report_id'] if row else None
 
 def load_analysis(report_id):
     path = analysis_path(report_id)
@@ -495,8 +645,249 @@ def translate():
         logging.error(f"Translation error: {e}")
         return jsonify({'error': 'Translation failed'}), 500
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', '8080')))
+@app.route('/api/mobile/session', methods=['POST'])
+def mobile_create_session():
+    if ai_request_is_limited('mobile-session', 10, 100, 10 * 60):
+        return jsonify({'error': 'Too many mobile sessions created. Please try again later.'}), 429
+    try:
+        cleanup_expired_mobile_sessions()
+    except sqlite3.Error:
+        logging.exception('Unable to clean up expired mobile sessions')
+        return jsonify({'error': 'Mobile session storage is unavailable'}), 503
+    token = secrets.token_urlsafe(32)
+    expires_at = int(time.time()) + MOBILE_TOKEN_TTL_SECONDS
+    try:
+        with mobile_db() as connection:
+            connection.execute(
+                'INSERT INTO mobile_sessions (token_hash, expires_at) VALUES (?, ?)',
+                (mobile_token_hash(token), expires_at),
+            )
+    except sqlite3.Error:
+        logging.exception('Unable to create mobile API session')
+        return jsonify({'error': 'Unable to create session'}), 503
+    response = jsonify({
+        'access_token': token,
+        'token_type': 'Bearer',
+        'expires_at': expires_at,
+        'expires_in': MOBILE_TOKEN_TTL_SECONDS,
+    })
+    response.headers['Cache-Control'] = 'private, no-store'
+    return response, 201
+
+@app.route('/api/mobile/upload', methods=['POST'])
+def mobile_upload():
+    mobile_session = authenticated_mobile_session()
+    if not mobile_session:
+        return jsonify({'error': 'Valid bearer token required'}), 401
+    if 'file' not in request.files:
+        return jsonify({'error': 'No file uploaded'}), 400
+    uploaded = request.files['file']
+    if not uploaded.filename:
+        return jsonify({'error': 'No file selected'}), 400
+    language = request.form.get('language', '')
+    if language not in SUPPORTED_LANGUAGES:
+        return jsonify({'error': 'Unsupported language'}), 400
+    if not allowed_file(uploaded.filename):
+        return jsonify({'error': 'Invalid file type'}), 400
+
+    filename = f"mobile_{uuid.uuid4().hex}.jpg"
+    filepath = os.path.join(UPLOAD_FOLDER, filename)
+    try:
+        uploaded.save(filepath)
+        if not mobile_image_is_valid(filepath, uploaded.filename):
+            return jsonify({'error': 'Invalid image file or dimensions'}), 400
+        with mobile_db() as connection:
+            connection.execute('BEGIN IMMEDIATE')
+            previous = connection.execute(
+                'SELECT uploaded_file, report_id FROM mobile_sessions WHERE token_hash = ? AND expires_at > ?',
+                (mobile_session['token_hash'], int(time.time())),
+            ).fetchone()
+            if not previous:
+                safe_remove(filepath)
+                return jsonify({'error': 'Mobile session has expired'}), 401
+            updated = connection.execute(
+                '''UPDATE mobile_sessions
+                   SET uploaded_file = ?, language = ?, report_id = NULL, analysis_json = NULL
+                   WHERE token_hash = ? AND expires_at > ?''',
+                (filename, language, mobile_session['token_hash'], int(time.time())),
+            ).rowcount
+        if not updated:
+            safe_remove(filepath)
+            return jsonify({'error': 'Mobile session has expired'}), 401
+        remove_mobile_artifacts(previous)
+        return jsonify({
+            'success': True,
+            'message': 'Portrait uploaded successfully.',
+        })
+    except Exception:
+        logging.exception('Mobile portrait upload failed')
+        safe_remove(filepath)
+        return jsonify({'error': 'Upload failed'}), 500
+    finally:
+        safe_remove(filepath + '.normalized.jpg')
+
+@app.route('/api/mobile/promo', methods=['POST'])
+def mobile_check_promo():
+    mobile_session = authenticated_mobile_session()
+    if not mobile_session:
+        return jsonify({'error': 'Valid bearer token required'}), 401
+    if ai_request_is_limited('mobile-promo', 10, 100, 10 * 60):
+        return jsonify({'error': 'Too many promo code attempts. Please try again later.'}), 429
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict) or not isinstance(data.get('promo_code'), str):
+        return jsonify({'error': 'Invalid request'}), 400
+    submitted_code = data['promo_code'].strip().lower()
+    if not PROMO_CODE or not hmac.compare_digest(submitted_code, PROMO_CODE.lower()):
+        return jsonify({
+            'success': False,
+            'message': 'Invalid promo code.',
+            'free_analysis': False,
+        })
+
+    grant_expiry = int(time.time()) + AI_AUTHORIZATION_TTL_SECONDS
+    with mobile_db() as connection:
+        connection.execute('BEGIN IMMEDIATE')
+        updated = connection.execute(
+            '''UPDATE mobile_sessions
+               SET grant_expires_at = ?, grant_issued = 1, grant_used = 0
+               WHERE token_hash = ? AND expires_at > ? AND grant_issued = 0''',
+            (grant_expiry, mobile_session['token_hash'], int(time.time())),
+        ).rowcount
+    if not updated:
+        return jsonify({
+            'success': False,
+            'message': 'This mobile session has already used its promotion grant.',
+            'free_analysis': False,
+        }), 409
+    return jsonify({
+        'success': True,
+        'message': 'Promo code accepted. One analysis is unlocked.',
+        'free_analysis': True,
+        'expires_at': grant_expiry,
+    })
+
+@app.route('/api/mobile/analyze', methods=['POST'])
+def mobile_analyze():
+    mobile_session = authenticated_mobile_session()
+    if not mobile_session:
+        return jsonify({'error': 'Valid bearer token required'}), 401
+    if ai_request_is_limited('mobile-analysis', 2, 30, 60 * 60):
+        return jsonify({'error': 'Analysis limit reached. Please try again later.'}), 429
+    now = int(time.time())
+    with mobile_db() as connection:
+        grant = connection.execute(
+            '''SELECT grant_issued, grant_used, grant_expires_at
+               FROM mobile_sessions WHERE token_hash = ? AND expires_at > ?''',
+            (mobile_session['token_hash'], now),
+        ).fetchone()
+    if (
+        not grant
+        or not grant['grant_issued']
+        or grant['grant_used']
+        or not grant['grant_expires_at']
+        or grant['grant_expires_at'] < now
+    ):
+        return jsonify({'error': 'A valid, unused promo grant is required.'}), 403
+    filepath = uploaded_path(mobile_session['uploaded_file'])
+    if not filepath or not os.path.isfile(filepath):
+        return jsonify({'error': 'Upload a valid portrait before analysis.'}), 400
+
+    with mobile_db() as connection:
+        connection.execute('BEGIN IMMEDIATE')
+        consumed = connection.execute(
+            '''UPDATE mobile_sessions SET grant_used = 1
+               WHERE token_hash = ? AND expires_at > ?
+                 AND grant_issued = 1 AND grant_used = 0 AND grant_expires_at >= ?''',
+            (mobile_session['token_hash'], now, now),
+        ).rowcount
+        if consumed:
+            current = connection.execute(
+                'SELECT language FROM mobile_sessions WHERE token_hash = ?',
+                (mobile_session['token_hash'],),
+            ).fetchone()
+            language = current['language'] or 'en'
+    if not consumed:
+        return jsonify({'error': 'A valid, unused promo grant is required.'}), 403
+
+    created_report = None
+    try:
+        face_data = detect_face_landmarks(filepath)
+        if not face_data:
+            return jsonify({
+                'error': 'No clear frontal face was detected. Use a well-lit, front-facing photo with one unobstructed face.'
+            }), 422
+        result = analyze_face_with_ai(filepath, language, face_data)
+        if not isinstance(result, dict) or 'error' in result:
+            message = result.get('message', 'The analysis service is temporarily unavailable.') if isinstance(result, dict) else 'The analysis service is temporarily unavailable.'
+            return jsonify({'error': message}), 503
+        created_report = f"mobile_analysis_{uuid.uuid4().hex}.pdf"
+        generate_analysis_pdf(result, report_path(created_report), language)
+        encoded_result = json.dumps(result, ensure_ascii=False)
+        with mobile_db() as connection:
+            updated = connection.execute(
+                '''UPDATE mobile_sessions SET report_id = ?, analysis_json = ?, uploaded_file = NULL
+                   WHERE token_hash = ? AND expires_at > ?''',
+                (created_report, encoded_result, mobile_session['token_hash'], int(time.time())),
+            ).rowcount
+        if not updated:
+            raise RuntimeError('Mobile session expired before analysis completed.')
+        response = jsonify({
+            'success': True,
+            'analysis': result,
+            'report_url': '/api/mobile/report',
+        })
+        response.headers['Cache-Control'] = 'private, no-store'
+        return response
+    except Exception:
+        logging.exception('Mobile analysis failed')
+        if created_report:
+            safe_remove(report_path(created_report))
+        return jsonify({'error': 'Analysis failed. The promo grant has been consumed.'}), 500
+    finally:
+        safe_remove(filepath)
+
+@app.route('/api/mobile/result', methods=['GET'])
+def mobile_result():
+    mobile_session = authenticated_mobile_session()
+    if not mobile_session:
+        return jsonify({'error': 'Valid bearer token required'}), 401
+    if not mobile_session['analysis_json']:
+        return jsonify({'error': 'No analysis is available'}), 404
+    response = jsonify({
+        'success': True,
+        'analysis': json.loads(mobile_session['analysis_json']),
+        'report_url': '/api/mobile/report',
+    })
+    response.headers['Cache-Control'] = 'private, no-store'
+    return response
+
+@app.route('/api/mobile/report', methods=['GET'])
+def mobile_report():
+    mobile_session = authenticated_mobile_session()
+    if not mobile_session:
+        return jsonify({'error': 'Valid bearer token required'}), 401
+    filepath = report_path(mobile_report_id_for(mobile_session))
+    if not filepath or not os.path.isfile(filepath):
+        return jsonify({'error': 'No PDF report is available'}), 404
+    response = send_file(
+        filepath, as_attachment=True, download_name='portrait_reflection_report.pdf',
+        mimetype='application/pdf', max_age=0,
+    )
+    response.headers['Cache-Control'] = 'private, no-store'
+    return response
+
+@app.route('/api/mobile/cancel', methods=['POST'])
+def mobile_cancel():
+    mobile_session = authenticated_mobile_session()
+    if not mobile_session:
+        return jsonify({'error': 'Valid bearer token required'}), 401
+    with mobile_db() as connection:
+        connection.execute(
+            'DELETE FROM mobile_sessions WHERE token_hash = ?',
+            (mobile_session['token_hash'],),
+        )
+    remove_mobile_artifacts(mobile_session)
+    return jsonify({'success': True})
 
 def client_ip():
     return request.remote_addr or 'unknown'
@@ -528,9 +919,65 @@ def rate_limit_exceeded(scope, limit, window_seconds, per_ip=True):
 
 @app.before_request
 def reject_cross_site_state_changes():
+    origin = request.headers.get('Origin')
+    if request.method == 'OPTIONS' and is_expo_cors_resource() and origin:
+        if not is_allowed_expo_origin(origin):
+            return jsonify({'error': 'Origin is not allowed'}), 403
+        requested_method = request.headers.get('Access-Control-Request-Method', '').upper()
+        route_methods = set(request.url_rule.methods or ()) if request.url_rule else set()
+        route_methods.discard('OPTIONS')
+        route_methods.discard('HEAD')
+        if requested_method not in route_methods:
+            return jsonify({'error': 'Preflight method is not allowed'}), 403
+        allowed_request_headers = {'authorization', 'content-type', 'accept'}
+        requested_headers = {
+            header.strip().lower()
+            for header in request.headers.get('Access-Control-Request-Headers', '').split(',')
+            if header.strip()
+        }
+        if not requested_headers.issubset(allowed_request_headers):
+            return jsonify({'error': 'Preflight headers are not allowed'}), 403
+        response = app.response_class(status=204)
+        response.headers['Access-Control-Allow-Methods'] = requested_method
+        if requested_headers:
+            response.headers['Access-Control-Allow-Headers'] = ', '.join(
+                header.title() for header in sorted(requested_headers)
+            )
+        response.headers['Access-Control-Max-Age'] = '600'
+        return apply_expo_cors_headers(response, origin)
+    if (
+        request.path.startswith('/api/mobile/')
+        and origin
+        and is_allowed_expo_origin(origin)
+    ):
+        return None
+    if (
+        request.path.startswith('/api/mobile/')
+        and not request.headers.get('Origin')
+        and not request.headers.get('Referer')
+    ):
+        return None
     if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'} and not request_source_is_same_origin():
         return jsonify({'error': 'Cross-site request blocked'}), 403
+
+@app.after_request
+def add_expo_cors_headers(response):
+    origin = request.headers.get('Origin')
+    if (
+        origin
+        and is_allowed_expo_origin(origin)
+        and is_expo_cors_resource()
+        and (
+            request.path.startswith('/api/mobile/')
+            or request.method == 'GET'
+        )
+    ):
+        apply_expo_cors_headers(response, origin)
+    return response
 
 @app.route('/api/healthz')
 def healthz():
     return jsonify({'status': 'ok'})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', '8080')))

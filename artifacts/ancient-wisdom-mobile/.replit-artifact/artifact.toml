@@ -1,0 +1,24 @@
+kind = "mobile"
+previewPath = "/ancient-wisdom-mobile/"
+title = "Ancient Wisdom"
+description = "A private portrait reflection app for iOS and Android, connected to the Ancient Wisdom analysis service."
+version = "1.0.0"
+id = "artifacts/ancient-wisdom-mobile"
+router = "expo-domain"
+
+[[services]]
+name = "expo"
+ensurePreviewReachable = "/status"
+paths = [ "/ancient-wisdom-mobile/" ]
+localPort = 21640
+
+[services.development]
+run = "pnpm --filter @workspace/ancient-wisdom-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ancient-wisdom-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/ancient-wisdom-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "21640"
+BASE_PATH = "/ancient-wisdom-mobile/"
