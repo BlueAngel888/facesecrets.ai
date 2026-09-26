@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "Ancient Wisdom AI"
+description = "A private multilingual face-analysis reflection experience combining ancient cultural traditions with modern AI, including camera capture, secure photo upload, checkout, and downloadable reports."
+version = "1.0.0"
+id = "artifacts/ancient-wisdom"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 25645
+
+[services.development]
+run = "pnpm --filter @workspace/ancient-wisdom run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/ancient-wisdom", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/ancient-wisdom/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "25645"
+BASE_PATH = "/"

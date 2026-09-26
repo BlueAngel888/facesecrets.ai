@@ -1,0 +1,214 @@
+openapi: 3.1.0
+info:
+  title: Api
+  version: 1.0.0
+  description: Ancient Wisdom face-analysis API
+servers:
+  - url: /api
+paths:
+  /healthz:
+    get:
+      operationId: healthCheck
+      responses:
+        "200":
+          description: Healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthStatus"
+  /page:
+    get:
+      operationId: getPage
+      parameters:
+        - in: query
+          name: lang
+          schema: { type: string }
+      responses:
+        "200":
+          description: Localized home-page data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageData"
+  /upload:
+    post:
+      operationId: uploadPortrait
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: "#/components/schemas/PortraitUpload"
+      responses:
+        "200":
+          description: Portrait accepted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResult"
+  /check-promo-code:
+    post:
+      operationId: checkPromoCode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromoCodeInput"
+      responses:
+        "200":
+          description: Promotion result
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromoCodeResult"
+  /free-analysis:
+    post:
+      operationId: runFreeAnalysis
+      responses:
+        "200":
+          description: Analysis completed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+  /create-checkout-session:
+    post:
+      operationId: createCheckoutSession
+      responses:
+        "200":
+          description: Stripe checkout created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckoutResult"
+  /success:
+    get:
+      operationId: getSuccessPage
+      parameters:
+        - in: query
+          name: session_id
+          schema: { type: string }
+      responses:
+        "200":
+          description: Completed analysis data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageData"
+  /cancel:
+    get:
+      operationId: getCancelPage
+      responses:
+        "200":
+          description: Localized cancellation data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PageData"
+    post:
+      operationId: cancelSession
+      responses:
+        "200":
+          description: Session cleared
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ActionResult"
+  /download-pdf:
+    post:
+      operationId: downloadPdf
+      responses:
+        "200":
+          description: Generated private PDF report
+          content:
+            application/pdf:
+              schema: { type: string, format: binary }
+  /translate:
+    post:
+      operationId: translateAnalysis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TranslationInput"
+      responses:
+        "200":
+          description: Translated text
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TranslationResult"
+components:
+  schemas:
+    HealthStatus:
+      type: object
+      required: [status]
+      properties:
+        status: { type: string }
+    PageData:
+      type: object
+      additionalProperties: true
+      required: [page]
+      properties:
+        page: { type: string }
+        language: { type: string }
+        languages:
+          type: object
+          additionalProperties: { type: string }
+        translations:
+          type: object
+          additionalProperties: { type: string }
+        analysis:
+          type: ["object", "null"]
+          additionalProperties: true
+        error: { type: string }
+    PortraitUpload:
+      type: object
+      required: [file, language]
+      properties:
+        file: { type: string, format: binary }
+        language: { type: string }
+    UploadResult:
+      type: object
+      required: [success, filename, message]
+      properties:
+        success: { type: boolean }
+        filename: { type: string }
+        message: { type: string }
+    PromoCodeInput:
+      type: object
+      required: [promo_code]
+      properties:
+        promo_code: { type: string }
+    PromoCodeResult:
+      type: object
+      required: [success, message, free_analysis]
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        free_analysis: { type: boolean }
+    ActionResult:
+      type: object
+      additionalProperties: true
+      properties:
+        success: { type: boolean }
+        message: { type: string }
+        redirect_url: { type: string }
+    CheckoutResult:
+      type: object
+      required: [checkout_url]
+      properties:
+        checkout_url: { type: string, format: uri }
+    TranslationInput:
+      type: object
+      required: [text, language]
+      properties:
+        text: { type: string, maxLength: 4000 }
+        language: { type: string }
+    TranslationResult:
+      type: object
+      required: [translated_text]
+      properties:
+        translated_text: { type: string }

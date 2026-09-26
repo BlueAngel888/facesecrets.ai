@@ -1,26 +1,19 @@
 {
-  "name": "ancient-wisdom-react",
-  "private": true,
-  "version": "1.0.0",
-  "type": "module",
+  "name": "workspace",
+  "version": "0.0.0",
+  "license": "MIT",
   "scripts": {
-    "dev": "vite --host 0.0.0.0",
-    "build": "vite build",
-    "test": "vitest run"
+    "preinstall": "sh -c 'rm -f package-lock.json yarn.lock; case \"$npm_config_user_agent\" in pnpm/*) ;; *) echo \"Use pnpm instead\" >&2; exit 1 ;; esac'",
+    "build": "pnpm run typecheck && pnpm -r --if-present run build",
+    "typecheck:libs": "tsc --build",
+    "typecheck": "pnpm run typecheck:libs && pnpm -r --filter \"./artifacts/**\" --filter \"./scripts\" --if-present run typecheck"
   },
+  "private": true,
   "dependencies": {
-    "@vitejs/plugin-react": "^6.1.1",
-    "framer-motion": "^13.4.1",
-    "lucide-react": "^1.47.0",
-    "react": "^19.3.0",
-    "react-dom": "^19.3.0",
-    "vite": "^8.3.0"
+    "@replit/connectors-sdk": "^0.4.3"
   },
   "devDependencies": {
-    "@testing-library/jest-dom": "^7.0.1",
-    "@testing-library/react": "^16.3.3",
-    "@testing-library/user-event": "^14.6.7",
-    "jsdom": "^30.1.1",
-    "vitest": "^5.0.1"
+    "prettier": "^3.9.6",
+    "typescript": "~5.9.3"
   }
 }

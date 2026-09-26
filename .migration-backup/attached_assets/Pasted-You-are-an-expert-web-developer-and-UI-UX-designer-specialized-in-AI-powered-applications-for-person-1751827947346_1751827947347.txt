@@ -1,0 +1,99 @@
+You are an expert web developer and UI/UX designer specialized in AI-powered applications for personal analysis. Build a modern, high-conversion, multi-language landing page web app in Replit that allows users to analyze their face using all major ancient and scientific face reading systems, with these requirements:
+
+---
+## GENERAL STRUCTURE
+
+- One-page minimalist, modern, fluid design
+- Pleasant, vibrant but non-tiring color palette
+- Top hook text: "Discover your deepest secrets and keep them for your eyes only!"
+- Central AI-powered face analysis module (GPT-powered)
+- Face image input via **upload** or **take photo with phone**
+- Result: detailed, multi-page downloadable PDF (auto-translation by OpenAI GPT-4, in selected language)
+- Sticky bottom bar with: "Only 29.99 EUR - Reveal Your Destiny" and payment via Stripe
+- Below: About Us, Terms & Agreements, Privacy (detailed disclaimers, see below)
+
+---
+
+## ANALYSIS CONTENT (shown in marketing area & explained in PDF):
+
+- **Chinese (Mian Xiang):** Explains the 100-year map of the face, major zones (forehead, nose, chin, eyes, cheeks, ears), health & fate predictions
+- **Greek (Physiognomy):** Aristotle's school; relates facial traits (shape, nose, eyes, jaw) to temperament, character and hidden potential
+- **Vedic (Samudrika Shastra):** Indian system connecting lines, moles, symmetry, and specific features to karma, destiny and relationships
+- **Islamic Firasa:** Spiritual, intuitive reading based on "inner light" and micro-expressions
+- **Modern (FACS/Ekman):** Micro-emotional coding (optional)
+- Claim: *These ancient methods, validated for thousands of years, have 90%+ accuracy for personality, destiny, health and potential!*
+- AI analysis blends all results, offers tailored, professional-grade report
+
+---
+
+## MULTILINGUAL FEATURES
+
+- Full site and all reports are available in: English, Romanian, German, Italian, French, Spanish, Chinese (Mandarin), Arabic, Japanese
+- Language picker (dropdown or icons) always visible; entire UI and PDF are in selected language
+- On changing language, all texts (including About, Terms, PDF etc) instantly switch (via GPT translation)
+
+---
+
+## DATA PRIVACY & LEGAL
+
+- User sees **disclaimer**: "Photo and analysis are deleted after download/session ends. No data is stored or shared."
+- Sticky T&Cs: "Analysis is for personal use only. User is fully responsible for how it is interpreted or used. Not a substitute for medical, legal or psychological advice."
+- Site automatically deletes uploaded photos and generated PDFs after user closes or downloads (no database or logs)
+- All privacy, GDPR/PDPA, and local law guidelines respected
+
+---
+
+## PAYMENT
+
+- Price: **Only 29.99 EUR per analysis** via Stripe checkout (credit/debit, Apple/Google Pay)
+- User gets access to analysis and download only after payment
+- Sticky bar with call-to-action always visible: "Just 29.99 EUR – Reveal your destiny now!"
+
+---
+
+## UI / UX DESIGN
+
+- Top section: mysterious/attractive background, enigmatic hook text, animated effect (optional)
+- Main CTA: large, attractive "Upload/Take Photo and Reveal Your Secrets" button
+- Section describing each ancient analysis method, with icons and short text
+- Carousel with demo sample reports (blurred for privacy)
+- Below: user reviews/testimonials (placeholder, can be replaced)
+- Footer: About Us, Terms & Agreements, Privacy Policy; minimalist but legal
+- Sticky bottom bar: payment & CTA
+- Responsive for mobile and desktop
+
+---
+
+## FUNCTIONAL REQUIREMENTS
+
+- Upload or capture photo (file input + camera API, mobile support)
+- Analyze face (basic face detection, landmarks, then call OpenAI GPT-4 with description + rules for each system)
+- PDF report generated in language chosen by user, with all system results, summary, and personal recommendations
+- Download PDF; after download/session close, all data (photo, report) is deleted
+- No analytics, no cookies except payment/session
+- Stripe integration for payments, release download on successful payment
+
+---
+
+## ABOUT US / TERMS / DISCLAIMERS
+
+- About Us: "We are a team of AI enthusiasts, psychologists and cultural experts dedicated to bringing ancient wisdom to the digital age."
+- Terms & Agreements: "All analyses are for entertainment and self-reflection. No guarantee of specific results. Analysis is confidential and deleted after download. The user accepts all responsibility for use or interpretation of their analysis. We do not store or share any photo, report or personal data."
+- Privacy: "No data is stored. All photos and reports are auto-deleted after session. GDPR and privacy-by-design compliant."
+
+---
+
+# OUTPUT FORMAT
+
+- Generate a Replit-ready web app (Python Flask + HTML/CSS/JS or Node.js + modern React/Vue)
+- Structure with clear modular code (upload, analyze, payment, report, multi-language, deletion)
+- Provide all text content in all required languages (can use GPT-4 translation API)
+- Optimized for security, privacy, and speed
+
+---
+
+# CALL TO ACTION
+
+Make the site so attractive and enigmatic that the user **wants to try the analysis immediately**. Emphasize ancient wisdom, 90%+ accuracy, AI-powered modern approach, and strict privacy!
+
+---

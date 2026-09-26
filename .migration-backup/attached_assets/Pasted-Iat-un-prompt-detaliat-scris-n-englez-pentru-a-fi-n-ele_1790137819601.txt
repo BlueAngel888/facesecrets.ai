@@ -1,0 +1,59 @@
+Iată un prompt detaliat, scris în engleză (pentru a fi înțeles perfect de Replit Agent), pe care îl poți copia direct în Replit:
+
+---
+
+### Prompt pentru Replit Agent
+
+> **Role & Objective:**
+> Act as a Full-Stack AI Engineer. Build a modern, sleek web application inspired by **facesecrets.ai** that allows users to upload a selfie/photo and receive a complete, detailed facial symmetry and proportions analysis.
+> **CRITICAL REQUIREMENT (NO EXTERNAL API KEYS):**
+> Do **NOT** use external API keys (such as OpenAI, Anthropic, or Google Cloud). Handle all facial detection and landmark processing directly on the client side or server side using **MediaPipe Face Landmarker** or **face-api.js / TensorFlow.js**.
+> **Key Features & Functionality:**
+> 1. **Image Upload & Capture:**
+> * Drag-and-drop file upload zone (supports JPG, PNG, WEBP).
+> * Direct webcam capture option with live camera preview.
+> * Client-side image preview before processing.
+> 
+> 
+> 2. **Facial Analysis Engine (Open-Source / Browser-based):**
+> * Detect facial landmarks (eyes, nose, jawline, lips, chin).
+> * Draw interactive facial mesh / landmark lines over the uploaded image canvas to show the points being measured.
+> * Calculate mathematical metrics:
+> * **Facial Symmetry Score (%)** based on left-vs-right eye/jaw distance.
+> * **Golden Ratio & Rule of Thirds Score** (ratio between forehead, nose, and chin).
+> * **Key Proportions** (e.g., eye distance ratio, lip-to-chin ratio).
+> 
+> 
+> 
+> 
+> 3. **Results Dashboard:**
+> * Display an overall **Attractiveness / Harmony Score** (or Beauty Index).
+> * Detailed breakdown cards with progress bars for Symmetry, Proportions, and Feature Balance.
+> * Fun/Engaging insights (e.g., "Dominant Feature: Eyes", "Strongest Trait: Jawline Symmetry").
+> 
+> 
+> 4. **UI/UX & Design:**
+> * **Theme:** Dark mode, highly modern, polished, and aesthetic (inspired by Apple, Stripe, and Linear).
+> * **Styling:** Tailwind CSS with subtle glowing background gradients and glassmorphism cards.
+> * **Animations:** Smooth Framer Motion transitions for file upload, canvas scanning effects, and progress bar reveals.
+> * Fully responsive for mobile and desktop.
+> 
+> 
+> 
+> 
+> **Tech Stack:**
+> * Frontend: React / Next.js or Vite + React
+> * Styling: Tailwind CSS & Lucide Icons
+> * Animation: Framer Motion
+> * Vision/Detection: `@mediapipe/tasks-vision` or `@vladmandic/face-api`
+> 
+> 
+> Build the entire application end-to-end, fully functional and ready to use in Replit.
+
+---
+
+### Ce se va întâmpla când îi dai acest prompt:
+
+1. Replit va instala automat `@mediapipe/tasks-vision` sau `face-api.js`.
+2. Va construi interfața vizuală modernă (stil întunecat, cu efecte subtile de neon/glassmorphism).
+3. Va procesa pozele încărcate direct în browserul utilizatorului, trasând liniile de analiză pe față (Mesh) și calculând scorul de simetrie fără să consume vreun credit de API plătit.
