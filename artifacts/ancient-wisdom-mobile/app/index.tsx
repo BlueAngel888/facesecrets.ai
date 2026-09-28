@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Animated, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
@@ -8,6 +8,7 @@ import colors from '@/constants/colors';
 import { ApiError, mobileApi, type Analysis, type Page } from '@/lib/mobile-api';
 import { availableReport, buyReport, loginForReport, restoreReportPurchases } from '@/lib/revenuecat';
 import { loadDeviceCredential, loadSession, saveDeviceCredential, saveSession } from '@/lib/session-store';
+import { IllustrativeCarousel, PortraitHero, StarField, Traditions, useReducedMotion } from '@/components/CelestialEditorial';
 import type { PurchasesPackage } from 'react-native-purchases';
 
 const c = colors.light;
@@ -33,8 +34,26 @@ function ReportSection({ title, value }: { title: string; value: unknown }) {
   return null;
 }
 
-function Action({ title, icon, onPress, secondary, disabled, testID }: { title: string; icon: keyof typeof Feather.glyphMap; onPress: () => void; secondary?: boolean; disabled?: boolean; testID?: string }) {
-  return <Pressable testID={testID} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.action, secondary && styles.secondary, (pressed || disabled) && { opacity: .55 }]}>
+function GoldShimmer() {
+  const reduced = useReducedMotion();
+  const progress = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (reduced) return;
+    const loop = Animated.loop(Animated.sequence([
+      Animated.timing(progress, { toValue: 1, duration: 1600, useNativeDriver: Platform.OS !== 'web' }),
+      Animated.delay(5500),
+      Animated.timing(progress, { toValue: 0, duration: 0, useNativeDriver: Platform.OS !== 'web' }),
+    ]));
+    loop.start();
+    return () => loop.stop();
+  }, [progress, reduced]);
+  return <Animated.View style={[styles.shimmer, { pointerEvents: 'none', opacity: reduced ? 0 : .24, transform: [{ translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [-80, 560] }) }, { skewX: '-25deg' }] }]} />;
+}
+
+function Action({ title, icon, onPress, secondary, luminous, disabled, testID }: { title: string; icon: keyof typeof Feather.glyphMap; onPress: () => void; secondary?: boolean; luminous?: boolean; disabled?: boolean; testID?: string }) {
+  return <Pressable testID={testID} disabled={disabled} onPress={onPress} style={({ pressed }) => [styles.action, secondary && styles.secondary, luminous && styles.luminous, pressed && { transform: [{ translateY: 3 }], opacity: .82 }, disabled && { opacity: .55 }]}>
+    {(!secondary || luminous) && <View style={[styles.actionHighlight, { pointerEvents: 'none' }]} />}
+    {(!secondary || luminous) && <GoldShimmer />}
     <Feather name={icon} color={secondary ? c.primary : c.primaryForeground} size={17} />
     <Text style={[styles.actionText, secondary && { color: c.primary }]}>{title}</Text>
   </Pressable>;
@@ -42,6 +61,7 @@ function Action({ title, icon, onPress, secondary, disabled, testID }: { title: 
 
 export default function Home() {
   const insets = useSafeAreaInsets();
+  const reducedMotion = useReducedMotion();
   const [language, setLanguage] = useState('en');
   const [page, setPage] = useState<Page | null>(null);
   const [step, setStep] = useState<Step>('choose');
@@ -207,26 +227,23 @@ export default function Home() {
   const retryPermissions = () => Linking.openSettings().catch(handleError);
   const languages = page?.languages || fallbackLanguages;
   return <View style={styles.root}>
+    <StarField reduced={reducedMotion} />
     <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[styles.content, { paddingTop: Platform.OS === 'web' ? 76 : insets.top + 18, paddingBottom: Platform.OS === 'web' ? 48 : insets.bottom + 34 }]}>
       <View style={styles.header}>
-        <View style={styles.brand}><View style={styles.mark}><Text style={styles.markText}>a</Text></View><Text style={styles.brandText}>ANCIENT WISDOM</Text></View>
-        <Pressable onPress={() => setLanguageOpen(!languageOpen)} style={styles.languageButton} testID="language"><Text style={styles.languageText}>{language.toUpperCase()}  ⌄</Text></Pressable>
+        <View style={styles.brand}><View style={styles.mark}><Feather name="star" size={15} color={c.primary} /></View><Text style={styles.brandText}>Face<Text style={styles.brandAccent}>Secrets</Text></Text></View>
+        <Pressable accessibilityRole="button" accessibilityLabel="Select language" accessibilityState={{ expanded: languageOpen }} onPress={() => setLanguageOpen(!languageOpen)} style={styles.languageButton} testID="language"><Feather name="globe" size={14} color={c.primary} /><Text style={styles.languageText}>{language.toUpperCase()}</Text><Feather name={languageOpen ? 'chevron-up' : 'chevron-down'} size={13} color={c.primary} /></Pressable>
       </View>
-      {languageOpen && <View style={styles.languages}>{Object.entries(languages).map(([code, label]) => <Pressable key={code} onPress={() => { setLanguage(code); setLanguageOpen(false); }} style={styles.languageItem}><Text style={[styles.body, code === language && { color: c.primary }]}>{label}</Text></Pressable>)}</View>}
-
-      <View style={styles.intro}>
-        <Text style={styles.eyebrow}>{t('hero_eyebrow', 'A PRIVATE REFLECTION')}</Text>
-        <Text style={styles.hero}>{t('title_before', 'Discover your ')}<Text style={{ color: c.primary }}>{t('title_emphasis', 'inner world')}</Text>{t('title_after', '.')}</Text>
-        <Text style={styles.body}>{t('subtitle', 'Ancient perspectives and modern AI, for personal reflection.')}</Text>
-      </View>
+      {languageOpen && <View style={styles.languages}>{Object.entries(languages).map(([code, label]) => <Pressable accessibilityRole="button" key={code} onPress={() => { setLanguage(code); setLanguageOpen(false); }} style={styles.languageItem}><Text style={[styles.body, code === language && { color: c.primary }]}>{label}</Text></Pressable>)}</View>}
 
       {step === 'choose' && <>
-        <View style={styles.orbitWrap}><View style={styles.orbitOuter}><View style={styles.orbitInner}><View style={styles.orb} /></View></View><View style={styles.scan} /></View>
-        <View style={styles.sectionHead}><Text style={styles.eyebrow}>01 / {t('session', 'YOUR SESSION')}</Text><Text style={styles.heading}>{t('session_title', 'Begin your reflection')}</Text></View>
+        <PortraitHero language={language} reduced={reducedMotion} />
+        <View style={styles.sectionHead}><Text style={styles.eyebrow}>01 / {t('session', 'YOUR SESSION')}</Text><Text style={styles.heading}>{t('session_title', 'Begin your reflection')}</Text><Text style={styles.muted}>A clear, front-facing portrait is all you need.</Text></View>
         {photo ? <Image source={{ uri: photo.uri }} style={styles.photo} /> : <View style={styles.empty}><Feather name="user" color={c.primary} size={29} /><Text style={styles.emptyTitle}>{t('upload', 'Your portrait')}</Text><Text style={styles.muted}>{t('file_help', 'Use a clear front-facing photo in soft, even light.')}</Text></View>}
-        <View style={styles.buttons}><Action testID="take-photo" title={t('camera', 'Take a photo')} icon="camera" onPress={() => select(true)} secondary /><Action testID="choose-photo" title={t('upload', 'Choose a photo')} icon="image" onPress={() => select(false)} secondary /></View>
+        <View style={styles.buttons}><Action testID="take-photo" title={t('camera', 'Take a photo')} icon="camera" onPress={() => select(true)} secondary luminous /><Action testID="choose-photo" title={t('upload', 'Choose a photo')} icon="image" onPress={() => select(false)} secondary luminous /></View>
         {photo && <Action testID="continue" title={t('analyze', 'Continue to analysis')} icon="arrow-right" onPress={upload} disabled={busy} />}
         {notice.includes('Open device settings') && <Action title="Open settings" icon="settings" onPress={retryPermissions} secondary />}
+        <Traditions language={language} />
+        <IllustrativeCarousel reduced={reducedMotion} language={language} />
       </>}
 
       {step === 'upload' && <View style={styles.wait}><ActivityIndicator color={c.primary} size="large" /><Text style={styles.heading}>{t('uploading', 'Uploading your portrait')}</Text><Text style={styles.muted}>Your image is processed privately and removed after analysis.</Text></View>}
@@ -266,15 +283,16 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: c.background },
-  content: { paddingHorizontal: 24, maxWidth: 560, width: '100%', alignSelf: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 22, borderBottomWidth: 1, borderBottomColor: c.border },
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  mark: { width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: c.primary, alignItems: 'center', justifyContent: 'center' },
-  markText: { fontFamily: 'InstrumentSerif_400Regular', fontSize: 23, color: c.primary, marginTop: -4 },
-  brandText: { color: c.foreground, fontFamily: 'DMSans_700Bold', fontSize: 11, letterSpacing: 1.7 },
-  languageButton: { padding: 10 },
-  languageText: { color: c.primary, fontFamily: 'SpaceMono_400Regular', fontSize: 11 },
-  languages: { borderColor: c.border, borderWidth: 1, backgroundColor: c.card, marginTop: 8, paddingVertical: 6 },
+  content: { paddingHorizontal: 20, maxWidth: 560, width: '100%', alignSelf: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 17, borderBottomWidth: 1, borderBottomColor: c.border },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 1 },
+  mark: { width: 31, height: 31, borderRadius: 16, borderWidth: 1, borderColor: c.primary, alignItems: 'center', justifyContent: 'center' },
+  markText: { fontFamily: 'InstrumentSerif_400Regular', fontSize: 18, color: c.primary },
+  brandText: { color: c.foreground, fontFamily: 'InstrumentSerif_400Regular', fontSize: 25, letterSpacing: -.6 },
+  brandAccent: { color: c.primary },
+  languageButton: { paddingHorizontal: 10, paddingVertical: 9, flexDirection: 'row', alignItems: 'center', gap: 5, borderWidth: 1, borderColor: c.border, minHeight: 40 },
+  languageText: { color: c.primary, fontFamily: 'DMSans_700Bold', fontSize: 11, letterSpacing: 1 },
+  languages: { borderColor: c.border, borderWidth: 1, backgroundColor: c.card, marginTop: 8, paddingVertical: 6, zIndex: 2 },
   languageItem: { paddingVertical: 10, paddingHorizontal: 16 },
   intro: { paddingTop: 45, gap: 18 },
   eyebrow: { color: c.primary, fontFamily: 'DMSans_700Bold', fontSize: 10, letterSpacing: 2, textTransform: 'uppercase' },
@@ -286,14 +304,17 @@ const styles = StyleSheet.create({
   orbitInner: { width: 133, height: 133, borderRadius: 70, borderWidth: 1, borderColor: c.accent, alignItems: 'center', justifyContent: 'center' },
   orb: { width: 105, height: 105, borderRadius: 55, backgroundColor: c.secondary, borderWidth: 17, borderColor: c.background },
   scan: { position: 'absolute', height: 1, left: '18%', right: '18%', backgroundColor: c.primary },
-  sectionHead: { marginTop: 38, marginBottom: 24, gap: 8 },
+  sectionHead: { marginTop: 48, marginBottom: 24, gap: 8 },
   heading: { fontFamily: 'InstrumentSerif_400Regular', color: c.foreground, fontSize: 38, lineHeight: 42 },
-  empty: { minHeight: 165, borderWidth: 1, borderStyle: 'dashed', borderColor: c.primary, alignItems: 'center', justifyContent: 'center', gap: 9, padding: 20 },
+  empty: { minHeight: 175, borderWidth: 1, borderStyle: 'dashed', borderColor: c.primary, backgroundColor: c.card, alignItems: 'center', justifyContent: 'center', gap: 9, padding: 20 },
   emptyTitle: { color: c.foreground, fontFamily: 'InstrumentSerif_400Regular', fontSize: 23 },
   photo: { width: '100%', height: 240, borderWidth: 1, borderColor: c.border },
   buttons: { marginTop: 16, gap: 10 },
-  action: { minHeight: 50, backgroundColor: c.primary, borderColor: c.primary, borderWidth: 1, flexDirection: 'row', gap: 10, alignItems: 'center', justifyContent: 'center', padding: 10, marginTop: 10 },
-  secondary: { backgroundColor: 'transparent' },
+  action: { minHeight: 54, backgroundColor: c.primary, borderColor: '#f1d79e', borderBottomColor: '#896a3c', borderWidth: 1, flexDirection: 'row', gap: 10, alignItems: 'center', justifyContent: 'center', padding: 10, marginTop: 10, overflow: 'hidden', elevation: 4, shadowColor: c.primary, shadowOpacity: .18, shadowRadius: 10, shadowOffset: { width: 0, height: 3 } },
+  actionHighlight: { position: 'absolute', top: 1, left: 1, right: 1, height: 2, backgroundColor: '#f7e5bb', opacity: .8 },
+  shimmer: { position: 'absolute', top: -15, bottom: -15, left: 0, width: 42, backgroundColor: '#fff4d5' },
+  secondary: { backgroundColor: c.card, borderColor: c.border, elevation: 0, shadowOpacity: 0 },
+  luminous: { borderColor: c.primary, borderBottomColor: c.border, elevation: 4, shadowOpacity: .28, shadowRadius: 12 },
   actionText: { color: c.primaryForeground, fontFamily: 'DMSans_700Bold', fontSize: 14 },
   panel: { backgroundColor: c.card, borderWidth: 1, borderColor: c.border, padding: 22, gap: 15 },
   panelTitle: { color: c.foreground, fontFamily: 'InstrumentSerif_400Regular', fontSize: 28 },
