@@ -1,1 +1,2 @@
 - [RevenueCat store isolation](revenuecat-store-isolation.md) — Test Store and native products may share an identifier; purchase verification must distinguish their apps and deployment modes.
+- [Security override compatibility](security-override-compatibility.md) — A clean audit can hide transitive CommonJS-to-ESM breakage; exercise the affected parent package at runtime.
