@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "uv run gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --timeout 180 main:app",
-    "build": "uv sync --frozen",
+    "build": "uv sync --frozen --reinstall-package opencv-python-headless && uv run --no-sync python check_dependencies.py",
     "start": "uv run gunicorn --bind 0.0.0.0:${PORT:-8080} --workers 1 --timeout 180 main:app",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

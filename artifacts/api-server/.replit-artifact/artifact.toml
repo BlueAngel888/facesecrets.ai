@@ -15,7 +15,7 @@ run = "pnpm --filter @workspace/api-server run dev"
 [services.production]
 
 [services.production.build]
-args = ["sh", "-c", "cd artifacts/api-server && uv sync --frozen"]
+args = ["pnpm", "--filter", "@workspace/api-server", "run", "build"]
 
 [services.production.build.env]
 NODE_ENV = "production"
