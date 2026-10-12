@@ -11,14 +11,22 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.ancientwisdom.portrait",
       "infoPlist": {
-        "NSCameraUsageDescription": "Take a portrait for your private reflection report.",
-        "NSPhotoLibraryUsageDescription": "Choose a portrait for your private reflection report."
+        "NSCameraUsageDescription": "FaceSecrets uses the camera so you can take a portrait for your private reflection report. The photo is uploaded only after you agree, and it is deleted after processing.",
+        "NSPhotoLibraryUsageDescription": "FaceSecrets lets you choose one portrait from your library for your private reflection report. The photo is deleted after processing.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.ancientwisdom.portrait",
       "permissions": [
         "CAMERA"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
       ]
     },
     "splash": {
@@ -34,11 +42,17 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Choose a portrait for your private reflection report.",
-          "cameraPermission": "Take a portrait for your private reflection report."
+          "photosPermission": "FaceSecrets lets you choose one portrait from your library for your private reflection report. The photo is deleted after processing.",
+          "cameraPermission": "FaceSecrets uses the camera so you can take a portrait for your private reflection report. The photo is uploaded only after you agree, and it is deleted after processing.",
+          "microphonePermission": false
         }
       ],
-      "expo-secure-store"
+      [
+        "expo-secure-store",
+        {
+          "faceIDPermission": false
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
