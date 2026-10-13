@@ -12,6 +12,7 @@ from collections import defaultdict, deque
 from threading import Lock
 from flask import Flask, render_template, request, jsonify, send_file, redirect, session, url_for
 from werkzeug.exceptions import RequestEntityTooLarge
+from markupsafe import escape
 import stripe
 import psycopg2
 from psycopg2.extras import DictCursor
@@ -1259,6 +1260,53 @@ def add_expo_cors_headers(response):
     ):
         apply_expo_cors_headers(response, origin)
     return response
+
+PRIVACY_POLICY_HTML = """<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FaceSecrets Privacy Policy</title>
+<style>body{font:16px/1.6 system-ui,sans-serif;max-width:720px;margin:0 auto;padding:24px 16px;color:#1d1d1f;background:#fff}h1{font-size:28px}h2{font-size:19px;margin-top:28px}</style>
+</head><body>
+<h1>FaceSecrets Privacy Policy</h1>
+<p>Last updated: {updated}</p>
+<p>FaceSecrets ("we") offers portrait-reflection reports on the web and in the FaceSecrets iOS and Android apps. This policy explains what we collect, why, and for how long.</p>
+<h2>What we collect</h2>
+<ul>
+<li><b>Your portrait photo</b>, only when you choose to take or upload one and agree to send it for analysis.</li>
+<li><b>Your selected language</b> and the generated report.</li>
+<li><b>A random device credential and session token</b> stored securely on your device, so an unfinished report can be resumed. They are not linked to your name, email or contacts.</li>
+<li><b>Purchase records.</b> In-app purchases are processed by Apple or Google and verified through RevenueCat using an anonymous app user ID. Web payments are processed by Stripe. We never receive your card details.</li>
+</ul>
+<p>We do not collect your name, email, contacts, location or advertising identifiers, and we do not use your data for advertising or tracking.</p>
+<h2>How your photo is used</h2>
+<p>Your photo is used only to create the report you requested. Our server checks that the image contains a clear front-facing face, then sends it to our AI provider, OpenAI, which generates the report text. OpenAI processes the image on our behalf only to produce your report. We do not create face templates, do not identify you, and do not compare your face with other faces.</p>
+<h2>How long we keep it</h2>
+<ul>
+<li>Your photo is deleted from our server as soon as the analysis finishes or fails, or when you cancel the session.</li>
+<li>Your report and its PDF are deleted when your session expires, at most 24 hours after it starts.</li>
+<li>Purchase records are kept as long as needed for accounting, fraud prevention and refunds.</li>
+</ul>
+<h2>Sharing</h2>
+<p>We share data only with the service providers needed to run FaceSecrets (hosting on Replit, OpenAI for analysis, RevenueCat, Apple, Google and Stripe for payments). We do not sell personal data.</p>
+<h2>Your choices and rights</h2>
+<p>You can cancel a session at any time, which deletes your photo and report immediately. Depending on where you live (for example under the GDPR), you may ask to access or delete your data or object to its processing by contacting us.</p>
+<h2>Important context</h2>
+<p>Reports draw on historical, non-scientific face-reading traditions and are for entertainment and self-reflection only. They are not medical, nutritional, psychological, financial or predictive advice.</p>
+<h2>Children</h2>
+<p>FaceSecrets is not intended for anyone under 16.</p>
+<h2>Contact</h2>
+<p>{contact}</p>
+</body></html>"""
+
+
+@app.route('/api/privacy')
+def privacy_policy():
+    email = os.environ.get('PRIVACY_CONTACT_EMAIL', '').strip()
+    contact = (
+        f'Questions or requests: <a href="mailto:{escape(email)}">{escape(email)}</a>'
+        if email else 'Use the support contact listed on the FaceSecrets store page.'
+    )
+    html = PRIVACY_POLICY_HTML.replace('{updated}', os.environ.get('PRIVACY_POLICY_UPDATED', '2026-10-12')).replace('{contact}', contact)
+    return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
 
 @app.route('/api/healthz')
 def healthz():
