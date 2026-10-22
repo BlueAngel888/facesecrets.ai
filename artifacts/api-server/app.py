@@ -20,10 +20,13 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 import uuid
 import tempfile
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import quote, urlsplit
+import urllib.error
+import urllib.request
 from PIL import Image
 import cv2
 import numpy as np
+import file_store
 from openai_service import analyze_face_with_ai, translate_text
 from pdf_service import generate_analysis_pdf
 from translations import get_translations, SUPPORTED_LANGUAGES
@@ -43,12 +46,20 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
 
 # Stripe configuration
 stripe.api_key = os.environ.get('STRIPE_SECRET_KEY')
+def is_production():
+    # A published Replit deployment or Vercel's production target.
+    return bool(os.environ.get('REPLIT_DEPLOYMENT')) or os.environ.get('VERCEL_ENV') == 'production'
+
 # Domain configuration - supports custom domain via environment variable
 CUSTOM_DOMAIN = os.environ.get('CUSTOM_DOMAIN')
 if CUSTOM_DOMAIN:
     YOUR_DOMAIN = CUSTOM_DOMAIN
 elif os.environ.get('REPLIT_DEPLOYMENT'):
     YOUR_DOMAIN = os.environ.get('REPLIT_DOMAINS', 'localhost:5000').split(',')[0]
+elif os.environ.get('VERCEL'):
+    YOUR_DOMAIN = (
+        os.environ.get('VERCEL_PROJECT_PRODUCTION_URL') if is_production() else os.environ.get('VERCEL_URL')
+    ) or 'localhost:5000'
 else:
     YOUR_DOMAIN = 'localhost:5000'
 
@@ -81,7 +92,7 @@ def page_payload(page='home', **page_data):
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
-    SESSION_COOKIE_SECURE=bool(os.environ.get('REPLIT_DEPLOYMENT')),
+    SESSION_COOKIE_SECURE=bool(os.environ.get('REPLIT_DEPLOYMENT') or os.environ.get('VERCEL')),
 )
 
 def request_source_is_same_origin():
@@ -158,6 +169,7 @@ def apply_expo_cors_headers(response, origin):
 
 def safe_remove(path):
     if path:
+        file_store.delete(path)
         try:
             os.remove(path)
         except FileNotFoundError:
@@ -251,8 +263,77 @@ def cleanup_expired_mobile_sessions():
 def mobile_token_hash(token):
     return hashlib.sha256(token.encode('utf-8')).hexdigest()
 
+REVENUECAT_API_BASE = 'https://api.revenuecat.com'
+
+def revenuecat_api_purchases(project_id, app_user_id, product_id, secret_key):
+    """Fetch the configured product's purchases from the RevenueCat v2 API.
+
+    Mirrors scripts/src/revenueCatPurchases.ts for hosts without the Replit
+    connector bridge (Vercel). Returns None on any failure.
+    """
+    project_path = f'/v2/projects/{quote(project_id, safe="")}'
+    test_store_app_id = os.environ.get('REVENUECAT_TEST_STORE_APP_ID', '').strip()
+
+    def get_page(path, customer_first_page):
+        api_request = urllib.request.Request(
+            f'{REVENUECAT_API_BASE}{path}',
+            headers={'Authorization': f'Bearer {secret_key}', 'Accept': 'application/json'},
+        )
+        try:
+            with urllib.request.urlopen(api_request, timeout=15) as response:
+                return json.loads(response.read().decode('utf-8'))
+        except urllib.error.HTTPError as error:
+            # RevenueCat does not create the customer until the SDK first sees them.
+            if error.code == 404 and customer_first_page:
+                return {'items': [], 'next_page': None}
+            raise
+
+    def list_all(initial_path, customer=False):
+        path, visited, items = initial_path, set(), []
+        while path:
+            if not path.startswith(f'{project_path}/') or path in visited or len(visited) >= 1000:
+                raise RuntimeError('Unexpected RevenueCat pagination')
+            visited.add(path)
+            page = get_page(path, customer and len(visited) == 1)
+            if not isinstance(page.get('items'), list):
+                raise RuntimeError('Unexpected RevenueCat response')
+            items.extend(page['items'])
+            path = page.get('next_page')
+        return items
+
+    try:
+        catalog = list_all(f'{project_path}/products?limit=100')
+        purchases = list_all(
+            f'{project_path}/customers/{quote(app_user_id, safe="")}/purchases?limit=100', customer=True
+        )
+    except Exception:
+        # Errors can include customer data; never log their details.
+        return None
+    products = {
+        product['id']: product
+        for product in catalog
+        if isinstance(product, dict)
+        and isinstance(product.get('id'), str)
+        and (product.get('id') == product_id or product.get('store_identifier') == product_id)
+        and (
+            isinstance(product.get('app_id'), str) and product.get('app_id') != test_store_app_id
+            if is_production() else product.get('app_id') == test_store_app_id
+        )
+    }
+    return [
+        {**purchase, 'revenuecat_product': products[purchase['product_id']]}
+        for purchase in purchases
+        if isinstance(purchase, dict) and purchase.get('product_id') in products
+    ]
+
 def revenuecat_customer_purchases(project_id, app_user_id):
-    """Use the Node connector bridge to fetch RevenueCat resources and all purchase pages."""
+    """Fetch RevenueCat purchases via the REST API when a secret key is set,
+    otherwise through the Replit connector bridge."""
+    secret_key = os.environ.get('REVENUECAT_SECRET_API_KEY', '').strip()
+    if secret_key:
+        return revenuecat_api_purchases(
+            project_id, app_user_id, os.environ.get('REVENUECAT_PRODUCT_ID', '').strip(), secret_key
+        )
     try:
         workspace_root = Path(__file__).resolve().parents[2]
         helper = workspace_root / 'scripts' / 'src' / 'revenueCatPurchases.ts'
@@ -370,7 +451,7 @@ def mobile_report_id_for(row):
 
 def load_analysis(report_id):
     path = analysis_path(report_id)
-    if not path or not os.path.exists(path):
+    if not path or not file_store.fetch(path):
         return None
     with open(path, 'r', encoding='utf-8') as analysis_file:
         return json.load(analysis_file)
@@ -381,7 +462,7 @@ def clear_previous_upload():
 
 def run_analysis(filename, language):
     filepath = uploaded_path(filename)
-    if not filepath or not os.path.exists(filepath):
+    if not filepath or not file_store.fetch(filepath):
         raise ValueError('Uploaded photo is no longer available. Please upload it again.')
     try:
         face_data = detect_face_landmarks(filepath)
@@ -395,6 +476,8 @@ def run_analysis(filename, language):
         generate_analysis_pdf(result, path, language)
         with open(analysis_path(report_id), 'w', encoding='utf-8') as analysis_file:
             json.dump(result, analysis_file, ensure_ascii=False)
+        file_store.save(path)
+        file_store.save(analysis_path(report_id))
         session['report_id'] = report_id
         session['analysis_complete'] = True
         return result
@@ -509,6 +592,7 @@ def upload_file():
                 os.remove(filepath)
                 return jsonify({'error': 'Invalid image file'}), 400
             
+            file_store.save(filepath)
             # Store file info in session for payment
             session['uploaded_file'] = filename
             session['language'] = language
@@ -692,7 +776,7 @@ def download_pdf():
     pdf_path = report_path(session.get('report_id'))
     if not pdf_path:
         return jsonify({'error': 'No PDF file available'}), 404
-    if not os.path.exists(pdf_path):
+    if not file_store.fetch(pdf_path):
         return jsonify({'error': 'PDF file not found'}), 404
     try:
         with open(pdf_path, 'rb') as report:
@@ -841,6 +925,7 @@ def mobile_upload():
         uploaded.save(filepath)
         if not mobile_image_is_valid(filepath, uploaded.filename):
             return jsonify({'error': 'Invalid image file or dimensions'}), 400
+        file_store.save(filepath)
         with mobile_db() as connection:
             previous = connection.execute(
                 'SELECT uploaded_file, report_id FROM mobile_sessions WHERE token_hash = ? AND expires_at > ?',
@@ -942,7 +1027,7 @@ def mobile_redeem_purchase():
         verified_purchases,
         product_id,
         test_store_app_id,
-        production=bool(os.environ.get('REPLIT_DEPLOYMENT')),
+        production=is_production(),
     )
     if not transactions:
         return jsonify({'error': 'No valid, non-refunded consumable purchase was found.'}), 402
@@ -1018,7 +1103,7 @@ def mobile_analyze():
         return jsonify({'error': 'Analysis limit reached. Please try again later.'}), 429
 
     filepath = uploaded_path(mobile_session['uploaded_file'])
-    if not filepath or not os.path.isfile(filepath):
+    if not filepath or not file_store.fetch(filepath):
         return jsonify({'error': 'Upload a valid portrait before analysis.'}), 400
 
     now = int(time.time())
