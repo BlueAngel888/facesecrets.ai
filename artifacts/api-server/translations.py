@@ -96,10 +96,10 @@ TRANSLATIONS = {
 UI_TRANSLATIONS = {
     'en': {
         'ui_title_before': 'Read what ', 'ui_title_emphasis': 'time', 'ui_title_after': ' remembers.',
-        'ui_subtitle': 'A private face-analysis reflection experience where ancient traditions meet modern pattern recognition.',
+        'ui_subtitle': 'AI face reading in a private report: five historical face-reading traditions meet modern facial-expression science.',
         'ui_hook': 'A quiet mirror for the parts of you that are easy to overlook.',
-        'ui_private': 'PRIVATE BY DESIGN', 'ui_language': 'Language', 'ui_brand': 'Ancient Wisdom AI',
-        'ui_hero_eyebrow': 'Ancient signals · modern lens', 'ui_instrument': 'Reflection instrument / 01',
+        'ui_private': 'PRIVATE BY DESIGN', 'ui_language': 'Language', 'ui_brand': 'FaceSecrets',
+        'ui_hero_eyebrow': 'AI face analysis · ancient face reading', 'ui_instrument': 'Reflection instrument / 01',
         'ui_scanner_caption': 'FACE / PATTERN / CONTEXT', 'ui_encrypted': 'ENCRYPTED',
         'ui_lenses_eyebrow': 'Five lenses, one portrait', 'ui_lenses_title': 'Wisdom is a conversation with context.',
         'ui_lenses_intro': 'We hold these traditions as reflective frameworks, not verdicts. The result is a considered prompt for self-understanding—not a diagnosis or prediction.',
@@ -121,7 +121,7 @@ UI_TRANSLATIONS = {
         'ui_download': 'Download private report', 'ui_again': 'Start again', 'ui_complete': 'Session complete', 'ui_checkout': 'Checkout', 'ui_notice': 'Session notice',
         'ui_success_detail': 'Your private report has been prepared. Download it now; the session will be cleared after delivery.',
         'ui_cancel_detail': 'You can return whenever the time feels right.', 'ui_error_detail': 'The session could not finish safely. Your portrait was not retained.',
-        'ui_summary': 'Executive Summary', 'ui_footer': '© Ancient Wisdom AI · Reflection, not diagnosis.', 'ui_footer_privacy': 'NO PHOTO STORAGE · SESSION DELETION',
+        'ui_summary': 'Executive Summary', 'ui_footer': '© FaceSecrets · Reflection, not diagnosis.', 'ui_footer_privacy': 'NO PHOTO STORAGE · SESSION DELETION',
         'ui_camera_studio': 'Camera studio', 'ui_face_light': 'Face the light.', 'ui_close_camera': 'Close camera', 'ui_lighting': 'Lighting', 'ui_position': 'Position', 'ui_distance': 'Distance',
         'ui_camera_help': 'Center your face inside the guide and use soft, even light.', 'ui_capture': 'Capture portrait', 'ui_cancel_button': 'Cancel',
         'ui_bad_type': 'Please choose a JPG, PNG, or GIF image.', 'ui_too_large': 'Your image must be smaller than 16 MB.', 'ui_choose_first': 'Choose a clear portrait before continuing.',
@@ -161,26 +161,150 @@ UI_TRANSLATIONS = {
 # error states which are not part of the compact locale blocks above.
 _COMPLETION_COPY = {
     'ro': {
-        'ui_brand': 'Ancient Wisdom AI', 'ui_instrument': 'Instrument de reflecție / 01', 'ui_scanner_caption': 'FAȚĂ / TIPAR / CONTEXT', 'ui_encrypted': 'CRIPТAT',
+        'ui_brand': 'FaceSecrets', 'ui_instrument': 'Instrument de reflecție / 01', 'ui_scanner_caption': 'FAȚĂ / TIPAR / CONTEXT', 'ui_encrypted': 'CRIPTAT',
         'ui_tradition_1_title': 'Mian Xiang chinezesc', 'ui_tradition_1_desc': 'Chipul ca hartă de 100 de ani: zone, cicluri și anotimpuri în schimbare.', 'ui_tradition_2_title': 'Fiziognomie greacă', 'ui_tradition_2_desc': 'Școala lui Aristotel despre temperament și potențial ascuns.', 'ui_tradition_3_title': 'Samudrika vedică', 'ui_tradition_3_desc': 'Trăsături citite alături de karma, destin și relații.', 'ui_tradition_4_title': 'Firasa islamică', 'ui_tradition_4_desc': 'O interpretare intuitivă a luminii interioare și microexpresiilor.', 'ui_tradition_5_title': 'FACS / Ekman modern', 'ui_tradition_5_desc': 'Codificarea științifică a tiparelor emoționale vizibile.',
-        'ui_file_help': 'JPG, PNG sau GIF · până la 16 MB', 'ui_portrait_help': 'O singură persoană, clară, din față', 'ui_preview_alt': 'Previzualizare portret', 'ui_price': 'Reflecție completă · €29,99', 'ui_uploading': 'Portretul este securizat pentru această sesiune.', 'ui_comparing': 'Comparăm tiparele vizibile prin cinci tradiții reflexive.', 'ui_stage_1': 'Încărcare sigură', 'ui_stage_2': 'Citirea tiparelor', 'ui_stage_3': 'Pregătirea raportului', 'ui_complete': 'Sesiune finalizată', 'ui_checkout': 'Plată', 'ui_notice': 'Notificare despre sesiune', 'ui_success_detail': 'Raportul privat este pregătit. Descarcă-l acum; sesiunea va fi ștearsă după livrare.', 'ui_cancel_detail': 'Te poți întoarce când simți că este momentul.', 'ui_error_detail': 'Sesiunea nu s-a putut încheia în siguranță. Portretul nu a fost păstrat.', 'ui_summary': 'Rezumat executiv', 'ui_footer': '© Ancient Wisdom AI · Reflecție, nu diagnostic.', 'ui_footer_privacy': 'FĂRĂ STOCARE FOTO · ȘTERGEREA SESIUNII', 'ui_camera_studio': 'Studio foto', 'ui_face_light': 'Privește spre lumină.', 'ui_close_camera': 'Închide camera', 'ui_lighting': 'Iluminare', 'ui_position': 'Poziție', 'ui_distance': 'Distanță', 'ui_camera_help': 'Centrează fața în ghid și folosește o lumină blândă, uniformă.', 'ui_capture': 'Fă portretul', 'ui_cancel_button': 'Anulează', 'ui_bad_type': 'Alege o imagine JPG, PNG sau GIF.', 'ui_too_large': 'Imaginea trebuie să fie mai mică de 16 MB.', 'ui_choose_first': 'Alege un portret clar înainte de a continua.', 'ui_upload_failed': 'Încărcarea a eșuat.', 'ui_analysis_failed': 'Analiza a eșuat.', 'ui_payment_failed': 'Configurarea plății a eșuat.', 'ui_camera_denied': 'Accesul la cameră nu a fost acordat. Poți alege un portret.', 'ui_camera_starting': 'Camera pornește încă. Așteaptă puțin.'
+        'ui_file_help': 'JPG, PNG sau GIF · până la 16 MB', 'ui_portrait_help': 'O singură persoană, clară, din față', 'ui_preview_alt': 'Previzualizare portret', 'ui_price': 'Reflecție completă · €29,99', 'ui_uploading': 'Portretul este securizat pentru această sesiune.', 'ui_comparing': 'Comparăm tiparele vizibile prin cinci tradiții reflexive.', 'ui_stage_1': 'Încărcare sigură', 'ui_stage_2': 'Citirea tiparelor', 'ui_stage_3': 'Pregătirea raportului', 'ui_complete': 'Sesiune finalizată', 'ui_checkout': 'Plată', 'ui_notice': 'Notificare despre sesiune', 'ui_success_detail': 'Raportul privat este pregătit. Descarcă-l acum; sesiunea va fi ștearsă după livrare.', 'ui_cancel_detail': 'Te poți întoarce când simți că este momentul.', 'ui_error_detail': 'Sesiunea nu s-a putut încheia în siguranță. Portretul nu a fost păstrat.', 'ui_summary': 'Rezumat executiv', 'ui_footer': '© FaceSecrets · Reflecție, nu diagnostic.', 'ui_footer_privacy': 'FĂRĂ STOCARE FOTO · ȘTERGEREA SESIUNII', 'ui_camera_studio': 'Studio foto', 'ui_face_light': 'Privește spre lumină.', 'ui_close_camera': 'Închide camera', 'ui_lighting': 'Iluminare', 'ui_position': 'Poziție', 'ui_distance': 'Distanță', 'ui_camera_help': 'Centrează fața în ghid și folosește o lumină blândă, uniformă.', 'ui_capture': 'Fă portretul', 'ui_cancel_button': 'Anulează', 'ui_bad_type': 'Alege o imagine JPG, PNG sau GIF.', 'ui_too_large': 'Imaginea trebuie să fie mai mică de 16 MB.', 'ui_choose_first': 'Alege un portret clar înainte de a continua.', 'ui_upload_failed': 'Încărcarea a eșuat.', 'ui_analysis_failed': 'Analiza a eșuat.', 'ui_payment_failed': 'Configurarea plății a eșuat.', 'ui_camera_denied': 'Accesul la cameră nu a fost acordat. Poți alege un portret.', 'ui_camera_starting': 'Camera pornește încă. Așteaptă puțin.'
     }
 }
 
-# The remaining locales use the same complete, reviewed control vocabulary.
-# Values are kept per-locale (rather than inherited from English) so raw
-# dictionaries remain auditable and safe when a key is added.
-_LOCALE_LABELS = {
-    'de': 'Deutsche', 'it': 'Italiano', 'fr': 'Français', 'es': 'Español',
-    'zh': '中文', 'ar': 'العربية', 'ja': '日本語',
-}
-_CONTROL_KEYS = set(UI_TRANSLATIONS['en'])
-for _language, _label in _LOCALE_LABELS.items():
-    _COMPLETION_COPY[_language] = {
-        _key: f'{_label}: {_key[3:].replace("_", " ")}'
-        for _key in _CONTROL_KEYS
-        if _key not in UI_TRANSLATIONS[_language]
-    }
+# The remaining locales carry complete, hand-written copy for the controls and
+# error states that are not part of the compact locale blocks above.
+_COMPLETION_COPY.update({
+    'de': {
+        'ui_brand': 'FaceSecrets', 'ui_instrument': 'Reflexionsinstrument / 01', 'ui_scanner_caption': 'GESICHT / MUSTER / KONTEXT', 'ui_encrypted': 'VERSCHLÜSSELT',
+        'ui_tradition_1_title': 'Chinesisches Mian Xiang', 'ui_tradition_1_desc': 'Das Gesicht als 100-Jahre-Karte: Zonen, Zyklen und wechselnde Jahreszeiten.',
+        'ui_tradition_2_title': 'Griechische Physiognomik', 'ui_tradition_2_desc': 'Die Schule des Aristoteles über Temperament und verborgenes Potenzial.',
+        'ui_tradition_3_title': 'Vedisches Samudrika', 'ui_tradition_3_desc': 'Gesichtszüge im Zusammenhang mit Karma, Schicksal und Beziehungen gelesen.',
+        'ui_tradition_4_title': 'Islamische Firasa', 'ui_tradition_4_desc': 'Eine intuitive Deutung des inneren Lichts und der Mikroexpressionen.',
+        'ui_tradition_5_title': 'Modernes FACS / Ekman', 'ui_tradition_5_desc': 'Wissenschaftliche Kodierung sichtbarer emotionaler Muster.',
+        'ui_file_help': 'JPG, PNG oder GIF · bis 16 MB', 'ui_portrait_help': 'Eine Person, gut erkennbar, frontal', 'ui_preview_alt': 'Porträtvorschau', 'ui_price': 'Vollständige Reflexion · 29,99 €',
+        'ui_uploading': 'Dein Porträt wird für diese Sitzung gesichert.', 'ui_comparing': 'Sichtbare Muster werden mit fünf Reflexionstraditionen verglichen.',
+        'ui_stage_1': 'Sicherer Upload', 'ui_stage_2': 'Muster lesen', 'ui_stage_3': 'Bericht erstellen', 'ui_complete': 'Sitzung abgeschlossen', 'ui_checkout': 'Bezahlung', 'ui_notice': 'Sitzungshinweis',
+        'ui_success_detail': 'Dein privater Bericht ist fertig. Lade ihn jetzt herunter; die Sitzung wird nach der Übergabe gelöscht.',
+        'ui_cancel_detail': 'Du kannst zurückkehren, wann immer der Zeitpunkt passt.', 'ui_error_detail': 'Die Sitzung konnte nicht sicher abgeschlossen werden. Dein Porträt wurde nicht gespeichert.',
+        'ui_summary': 'Zusammenfassung', 'ui_footer': '© FaceSecrets · Reflexion, keine Diagnose.', 'ui_footer_privacy': 'KEINE FOTOSPEICHERUNG · LÖSCHUNG NACH DER SITZUNG',
+        'ui_camera_studio': 'Kamerastudio', 'ui_face_light': 'Schau ins Licht.', 'ui_close_camera': 'Kamera schließen', 'ui_lighting': 'Licht', 'ui_position': 'Position', 'ui_distance': 'Abstand',
+        'ui_camera_help': 'Zentriere dein Gesicht in der Führung und nutze weiches, gleichmäßiges Licht.', 'ui_capture': 'Porträt aufnehmen', 'ui_cancel_button': 'Abbrechen',
+        'ui_bad_type': 'Bitte wähle ein JPG-, PNG- oder GIF-Bild.', 'ui_too_large': 'Dein Bild muss kleiner als 16 MB sein.', 'ui_choose_first': 'Wähle zuerst ein klares Porträt.',
+        'ui_upload_failed': 'Upload fehlgeschlagen.', 'ui_analysis_failed': 'Analyse fehlgeschlagen.', 'ui_payment_failed': 'Zahlung konnte nicht vorbereitet werden.',
+        'ui_camera_denied': 'Kein Kamerazugriff. Du kannst stattdessen ein Porträt auswählen.', 'ui_camera_starting': 'Die Kamera startet noch. Bitte einen Moment warten.',
+    },
+    'it': {
+        'ui_brand': 'FaceSecrets', 'ui_instrument': 'Strumento di riflessione / 01', 'ui_scanner_caption': 'VOLTO / SCHEMA / CONTESTO', 'ui_encrypted': 'CRITTOGRAFATO',
+        'ui_tradition_1_title': 'Mian Xiang cinese', 'ui_tradition_1_desc': 'Il volto come mappa di 100 anni: zone, cicli e stagioni che cambiano.',
+        'ui_tradition_2_title': 'Fisiognomica greca', 'ui_tradition_2_desc': 'La scuola di Aristotele su temperamento e potenziale nascosto.',
+        'ui_tradition_3_title': 'Samudrika vedica', 'ui_tradition_3_desc': 'Tratti letti insieme a karma, destino e relazioni.',
+        'ui_tradition_4_title': 'Firasa islamica', 'ui_tradition_4_desc': 'Una lettura intuitiva della luce interiore e delle microespressioni.',
+        'ui_tradition_5_title': 'FACS / Ekman moderno', 'ui_tradition_5_desc': 'Codifica scientifica dei segnali emotivi visibili.',
+        'ui_file_help': 'JPG, PNG o GIF · fino a 16 MB', 'ui_portrait_help': 'Una sola persona, nitida, di fronte', 'ui_preview_alt': 'Anteprima del ritratto', 'ui_price': 'Riflessione completa · 29,99 €',
+        'ui_uploading': 'Stiamo proteggendo il tuo ritratto per questa sessione.', 'ui_comparing': 'Confrontiamo i segnali visibili con cinque tradizioni di riflessione.',
+        'ui_stage_1': 'Caricamento sicuro', 'ui_stage_2': 'Lettura dei segnali', 'ui_stage_3': 'Preparazione del report', 'ui_complete': 'Sessione completata', 'ui_checkout': 'Pagamento', 'ui_notice': 'Avviso di sessione',
+        'ui_success_detail': 'Il tuo report privato è pronto. Scaricalo ora; la sessione verrà cancellata dopo la consegna.',
+        'ui_cancel_detail': 'Puoi tornare quando ti sembra il momento giusto.', 'ui_error_detail': 'Non è stato possibile completare la sessione in sicurezza. Il tuo ritratto non è stato conservato.',
+        'ui_summary': 'Sintesi', 'ui_footer': '© FaceSecrets · Riflessione, non diagnosi.', 'ui_footer_privacy': 'NESSUNA FOTO CONSERVATA · ELIMINAZIONE A FINE SESSIONE',
+        'ui_camera_studio': 'Studio fotografico', 'ui_face_light': 'Rivolgiti verso la luce.', 'ui_close_camera': 'Chiudi fotocamera', 'ui_lighting': 'Luce', 'ui_position': 'Posizione', 'ui_distance': 'Distanza',
+        'ui_camera_help': 'Centra il volto nella guida e usa una luce morbida e uniforme.', 'ui_capture': 'Scatta il ritratto', 'ui_cancel_button': 'Annulla',
+        'ui_bad_type': 'Scegli un’immagine JPG, PNG o GIF.', 'ui_too_large': 'L’immagine deve essere inferiore a 16 MB.', 'ui_choose_first': 'Scegli un ritratto nitido prima di continuare.',
+        'ui_upload_failed': 'Caricamento non riuscito.', 'ui_analysis_failed': 'Analisi non riuscita.', 'ui_payment_failed': 'Impossibile avviare il pagamento.',
+        'ui_camera_denied': 'Accesso alla fotocamera negato. Puoi scegliere un ritratto.', 'ui_camera_starting': 'La fotocamera si sta ancora avviando. Attendi un momento.',
+    },
+    'fr': {
+        'ui_brand': 'FaceSecrets', 'ui_instrument': 'Instrument de réflexion / 01', 'ui_scanner_caption': 'VISAGE / MOTIF / CONTEXTE', 'ui_encrypted': 'CHIFFRÉ',
+        'ui_tradition_1_title': 'Mian Xiang chinois', 'ui_tradition_1_desc': 'Le visage comme carte de 100 ans : zones, cycles et saisons changeantes.',
+        'ui_tradition_2_title': 'Physiognomonie grecque', 'ui_tradition_2_desc': 'L’école d’Aristote sur le tempérament et le potentiel caché.',
+        'ui_tradition_3_title': 'Samudrika védique', 'ui_tradition_3_desc': 'Des traits lus à la lumière du karma, du destin et des relations.',
+        'ui_tradition_4_title': 'Firasa islamique', 'ui_tradition_4_desc': 'Une lecture intuitive de la lumière intérieure et des micro-expressions.',
+        'ui_tradition_5_title': 'FACS / Ekman moderne', 'ui_tradition_5_desc': 'Codage scientifique des signaux émotionnels visibles.',
+        'ui_file_help': 'JPG, PNG ou GIF · jusqu’à 16 Mo', 'ui_portrait_help': 'Une seule personne, nette, de face', 'ui_preview_alt': 'Aperçu du portrait', 'ui_price': 'Réflexion complète · 29,99 €',
+        'ui_uploading': 'Votre portrait est sécurisé pour cette session.', 'ui_comparing': 'Comparaison des motifs visibles à travers cinq traditions de réflexion.',
+        'ui_stage_1': 'Envoi sécurisé', 'ui_stage_2': 'Lecture des motifs', 'ui_stage_3': 'Préparation du rapport', 'ui_complete': 'Session terminée', 'ui_checkout': 'Paiement', 'ui_notice': 'Avis de session',
+        'ui_success_detail': 'Votre rapport privé est prêt. Téléchargez-le maintenant ; la session sera effacée après la remise.',
+        'ui_cancel_detail': 'Vous pouvez revenir quand le moment vous semblera juste.', 'ui_error_detail': 'La session n’a pas pu se terminer en toute sécurité. Votre portrait n’a pas été conservé.',
+        'ui_summary': 'Synthèse', 'ui_footer': '© FaceSecrets · Réflexion, pas diagnostic.', 'ui_footer_privacy': 'AUCUNE PHOTO CONSERVÉE · SUPPRESSION EN FIN DE SESSION',
+        'ui_camera_studio': 'Studio photo', 'ui_face_light': 'Tournez-vous vers la lumière.', 'ui_close_camera': 'Fermer la caméra', 'ui_lighting': 'Lumière', 'ui_position': 'Position', 'ui_distance': 'Distance',
+        'ui_camera_help': 'Centrez votre visage dans le guide et utilisez une lumière douce et uniforme.', 'ui_capture': 'Prendre le portrait', 'ui_cancel_button': 'Annuler',
+        'ui_bad_type': 'Veuillez choisir une image JPG, PNG ou GIF.', 'ui_too_large': 'Votre image doit faire moins de 16 Mo.', 'ui_choose_first': 'Choisissez un portrait net avant de continuer.',
+        'ui_upload_failed': 'Échec de l’envoi.', 'ui_analysis_failed': 'Échec de l’analyse.', 'ui_payment_failed': 'Impossible de préparer le paiement.',
+        'ui_camera_denied': 'L’accès à la caméra a été refusé. Vous pouvez choisir un portrait.', 'ui_camera_starting': 'La caméra démarre encore. Patientez un instant.',
+    },
+    'es': {
+        'ui_brand': 'FaceSecrets', 'ui_instrument': 'Instrumento de reflexión / 01', 'ui_scanner_caption': 'ROSTRO / PATRÓN / CONTEXTO', 'ui_encrypted': 'CIFRADO',
+        'ui_tradition_1_title': 'Mian Xiang chino', 'ui_tradition_1_desc': 'El rostro como mapa de 100 años: zonas, ciclos y estaciones cambiantes.',
+        'ui_tradition_2_title': 'Fisiognomía griega', 'ui_tradition_2_desc': 'La escuela de Aristóteles sobre el temperamento y el potencial oculto.',
+        'ui_tradition_3_title': 'Samudrika védica', 'ui_tradition_3_desc': 'Rasgos leídos junto al karma, el destino y las relaciones.',
+        'ui_tradition_4_title': 'Firasa islámica', 'ui_tradition_4_desc': 'Una lectura intuitiva de la luz interior y las microexpresiones.',
+        'ui_tradition_5_title': 'FACS / Ekman moderno', 'ui_tradition_5_desc': 'Codificación científica de señales emocionales visibles.',
+        'ui_file_help': 'JPG, PNG o GIF · hasta 16 MB', 'ui_portrait_help': 'Una sola persona, nítida, de frente', 'ui_preview_alt': 'Vista previa del retrato', 'ui_price': 'Reflexión completa · 29,99 €',
+        'ui_uploading': 'Protegiendo tu retrato para esta sesión.', 'ui_comparing': 'Comparando los patrones visibles con cinco tradiciones de reflexión.',
+        'ui_stage_1': 'Subida segura', 'ui_stage_2': 'Lectura de patrones', 'ui_stage_3': 'Preparación del informe', 'ui_complete': 'Sesión completada', 'ui_checkout': 'Pago', 'ui_notice': 'Aviso de sesión',
+        'ui_success_detail': 'Tu informe privado está listo. Descárgalo ahora; la sesión se borrará después de la entrega.',
+        'ui_cancel_detail': 'Puedes volver cuando sientas que es el momento.', 'ui_error_detail': 'La sesión no pudo terminar de forma segura. Tu retrato no se ha conservado.',
+        'ui_summary': 'Resumen', 'ui_footer': '© FaceSecrets · Reflexión, no diagnóstico.', 'ui_footer_privacy': 'SIN ALMACENAR FOTOS · BORRADO AL TERMINAR LA SESIÓN',
+        'ui_camera_studio': 'Estudio de cámara', 'ui_face_light': 'Mira hacia la luz.', 'ui_close_camera': 'Cerrar cámara', 'ui_lighting': 'Luz', 'ui_position': 'Posición', 'ui_distance': 'Distancia',
+        'ui_camera_help': 'Centra tu rostro en la guía y usa una luz suave y uniforme.', 'ui_capture': 'Capturar retrato', 'ui_cancel_button': 'Cancelar',
+        'ui_bad_type': 'Elige una imagen JPG, PNG o GIF.', 'ui_too_large': 'La imagen debe pesar menos de 16 MB.', 'ui_choose_first': 'Elige un retrato nítido antes de continuar.',
+        'ui_upload_failed': 'Error al subir.', 'ui_analysis_failed': 'Error en el análisis.', 'ui_payment_failed': 'No se pudo preparar el pago.',
+        'ui_camera_denied': 'No se concedió acceso a la cámara. Puedes elegir un retrato.', 'ui_camera_starting': 'La cámara aún se está iniciando. Espera un momento.',
+    },
+    'zh': {
+        'ui_brand': 'FaceSecrets', 'ui_instrument': '反思仪器 / 01', 'ui_scanner_caption': '面容 / 模式 / 情境', 'ui_encrypted': '已加密',
+        'ui_tradition_1_title': '中国面相', 'ui_tradition_1_desc': '面容如一张百年地图：部位、周期与流转的季节。',
+        'ui_tradition_2_title': '希腊相面术', 'ui_tradition_2_desc': '亚里士多德学派关于气质与潜能的学说。',
+        'ui_tradition_3_title': '吠陀相学', 'ui_tradition_3_desc': '结合业力、命运与人际关系解读五官。',
+        'ui_tradition_4_title': '伊斯兰 Firasa', 'ui_tradition_4_desc': '对内在光芒与微表情的直觉式解读。',
+        'ui_tradition_5_title': '现代 FACS / 艾克曼', 'ui_tradition_5_desc': '对可见情绪模式的科学编码。',
+        'ui_file_help': 'JPG、PNG 或 GIF · 最大 16 MB', 'ui_portrait_help': '单人、清晰、正面', 'ui_preview_alt': '肖像预览', 'ui_price': '完整反思 · €29.99',
+        'ui_uploading': '正在为本次会话保护您的肖像。', 'ui_comparing': '正在以五种反思传统比较可见的面部模式。',
+        'ui_stage_1': '安全上传', 'ui_stage_2': '解读模式', 'ui_stage_3': '生成报告', 'ui_complete': '会话完成', 'ui_checkout': '结账', 'ui_notice': '会话提示',
+        'ui_success_detail': '您的私密报告已准备好。请立即下载；交付后会话将被清除。',
+        'ui_cancel_detail': '您可以在合适的时候随时回来。', 'ui_error_detail': '会话未能安全完成。您的肖像未被保留。',
+        'ui_summary': '执行摘要', 'ui_footer': '© FaceSecrets · 反思，而非诊断。', 'ui_footer_privacy': '不存储照片 · 会话结束即删除',
+        'ui_camera_studio': '相机工作室', 'ui_face_light': '请面向光线。', 'ui_close_camera': '关闭相机', 'ui_lighting': '光线', 'ui_position': '位置', 'ui_distance': '距离',
+        'ui_camera_help': '将面部置于引导框中央，并使用柔和均匀的光线。', 'ui_capture': '拍摄肖像', 'ui_cancel_button': '取消',
+        'ui_bad_type': '请选择 JPG、PNG 或 GIF 图片。', 'ui_too_large': '图片必须小于 16 MB。', 'ui_choose_first': '请先选择一张清晰的肖像。',
+        'ui_upload_failed': '上传失败。', 'ui_analysis_failed': '分析失败。', 'ui_payment_failed': '无法发起付款。',
+        'ui_camera_denied': '未获得相机权限。您可以改为选择一张肖像。', 'ui_camera_starting': '相机仍在启动，请稍候。',
+    },
+    'ar': {
+        'ui_brand': 'FaceSecrets', 'ui_instrument': 'أداة التأمل / 01', 'ui_scanner_caption': 'الوجه / النمط / السياق', 'ui_encrypted': 'مشفّر',
+        'ui_tradition_1_title': 'ميان شيانغ الصيني', 'ui_tradition_1_desc': 'الوجه خريطة لمئة عام: مناطق ودورات وفصول متبدلة.',
+        'ui_tradition_2_title': 'علم الفراسة اليوناني', 'ui_tradition_2_desc': 'مدرسة أرسطو في المزاج والإمكانات الكامنة.',
+        'ui_tradition_3_title': 'ساموديكا الفيدية', 'ui_tradition_3_desc': 'قراءة الملامح في ضوء الكارما والقدر والعلاقات.',
+        'ui_tradition_4_title': 'الفراسة الإسلامية', 'ui_tradition_4_desc': 'قراءة حدسية للنور الداخلي والتعبيرات الدقيقة.',
+        'ui_tradition_5_title': 'FACS / إكمان الحديث', 'ui_tradition_5_desc': 'ترميز علمي للأنماط العاطفية الظاهرة.',
+        'ui_file_help': 'JPG أو PNG أو GIF · حتى 16 ميغابايت', 'ui_portrait_help': 'شخص واحد، واضح، من الأمام', 'ui_preview_alt': 'معاينة الصورة', 'ui_price': 'تأمل كامل · 29.99 €',
+        'ui_uploading': 'نؤمّن صورتك لهذه الجلسة.', 'ui_comparing': 'نقارن الأنماط الظاهرة عبر خمسة تقاليد تأملية.',
+        'ui_stage_1': 'رفع آمن', 'ui_stage_2': 'قراءة الأنماط', 'ui_stage_3': 'إعداد التقرير', 'ui_complete': 'اكتملت الجلسة', 'ui_checkout': 'الدفع', 'ui_notice': 'تنبيه الجلسة',
+        'ui_success_detail': 'تقريرك الخاص جاهز. نزّله الآن؛ ستُمسح الجلسة بعد التسليم.',
+        'ui_cancel_detail': 'يمكنك العودة متى شعرت أن الوقت مناسب.', 'ui_error_detail': 'تعذّر إكمال الجلسة بأمان. لم يتم الاحتفاظ بصورتك.',
+        'ui_summary': 'الملخص التنفيذي', 'ui_footer': '© FaceSecrets · تأمل، لا تشخيص.', 'ui_footer_privacy': 'لا تخزين للصور · حذف عند انتهاء الجلسة',
+        'ui_camera_studio': 'استوديو الكاميرا', 'ui_face_light': 'واجه الضوء.', 'ui_close_camera': 'إغلاق الكاميرا', 'ui_lighting': 'الإضاءة', 'ui_position': 'الوضعية', 'ui_distance': 'المسافة',
+        'ui_camera_help': 'ضع وجهك في منتصف الدليل واستخدم ضوءًا ناعمًا ومتساويًا.', 'ui_capture': 'التقاط الصورة', 'ui_cancel_button': 'إلغاء',
+        'ui_bad_type': 'يرجى اختيار صورة JPG أو PNG أو GIF.', 'ui_too_large': 'يجب أن يكون حجم الصورة أقل من 16 ميغابايت.', 'ui_choose_first': 'اختر صورة واضحة قبل المتابعة.',
+        'ui_upload_failed': 'فشل الرفع.', 'ui_analysis_failed': 'فشل التحليل.', 'ui_payment_failed': 'تعذّر تجهيز الدفع.',
+        'ui_camera_denied': 'لم يُسمح بالوصول إلى الكاميرا. يمكنك اختيار صورة بدلًا من ذلك.', 'ui_camera_starting': 'الكاميرا لا تزال تبدأ. يرجى الانتظار لحظة.',
+    },
+    'ja': {
+        'ui_brand': 'FaceSecrets', 'ui_instrument': '内省の道具 / 01', 'ui_scanner_caption': '顔 / パターン / 文脈', 'ui_encrypted': '暗号化済み',
+        'ui_tradition_1_title': '中国の面相（ミエンシャン）', 'ui_tradition_1_desc': '顔は100年の地図：部位、周期、移ろう季節。',
+        'ui_tradition_2_title': 'ギリシャの観相学', 'ui_tradition_2_desc': '気質と秘めた可能性をめぐるアリストテレス学派。',
+        'ui_tradition_3_title': 'ヴェーダのサームドリカ', 'ui_tradition_3_desc': 'カルマ、運命、人間関係とあわせて読む顔立ち。',
+        'ui_tradition_4_title': 'イスラムのフィラーサ', 'ui_tradition_4_desc': '内なる光と微表情を直感的に読み解く。',
+        'ui_tradition_5_title': '現代の FACS / エクマン', 'ui_tradition_5_desc': '目に見える感情パターンの科学的コーディング。',
+        'ui_file_help': 'JPG、PNG、GIF · 16 MB まで', 'ui_portrait_help': '一人、はっきり、正面向き', 'ui_preview_alt': 'ポートレートのプレビュー', 'ui_price': 'フルリフレクション · €29.99',
+        'ui_uploading': 'このセッションのためにポートレートを保護しています。', 'ui_comparing': '5つの伝統に照らして、見えるパターンを比較しています。',
+        'ui_stage_1': '安全なアップロード', 'ui_stage_2': 'パターンを読む', 'ui_stage_3': 'レポート作成', 'ui_complete': 'セッション完了', 'ui_checkout': 'お支払い', 'ui_notice': 'セッションのお知らせ',
+        'ui_success_detail': 'プライベートレポートの準備ができました。今すぐダウンロードしてください。受け渡し後、セッションは消去されます。',
+        'ui_cancel_detail': 'ふさわしいと感じたときに、いつでも戻ってきてください。', 'ui_error_detail': 'セッションを安全に完了できませんでした。ポートレートは保存されていません。',
+        'ui_summary': '概要', 'ui_footer': '© FaceSecrets · 内省であり、診断ではありません。', 'ui_footer_privacy': '写真は保存しません · セッション終了時に削除',
+        'ui_camera_studio': 'カメラスタジオ', 'ui_face_light': '光の方を向いてください。', 'ui_close_camera': 'カメラを閉じる', 'ui_lighting': '照明', 'ui_position': '位置', 'ui_distance': '距離',
+        'ui_camera_help': 'ガイドの中央に顔を合わせ、やわらかく均一な光を使ってください。', 'ui_capture': 'ポートレートを撮影', 'ui_cancel_button': 'キャンセル',
+        'ui_bad_type': 'JPG、PNG、GIF 画像を選んでください。', 'ui_too_large': '画像は 16 MB 未満にしてください。', 'ui_choose_first': '続ける前に、はっきりしたポートレートを選んでください。',
+        'ui_upload_failed': 'アップロードに失敗しました。', 'ui_analysis_failed': '分析に失敗しました。', 'ui_payment_failed': '支払いを準備できませんでした。',
+        'ui_camera_denied': 'カメラへのアクセスが許可されませんでした。代わりにポートレートを選べます。', 'ui_camera_starting': 'カメラを起動中です。少しお待ちください。',
+    },
+})
+
 for _language, _copy in _COMPLETION_COPY.items():
     UI_TRANSLATIONS[_language].update(_copy)
 
