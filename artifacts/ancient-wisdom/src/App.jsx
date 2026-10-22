@@ -4,6 +4,23 @@ import { Camera, Check, ChevronDown, CircleAlert, FileImage, LockKeyhole, Rotate
 
 const defaultLanguages = { en: "English", ro: "Română", de: "Deutsch", it: "Italiano", fr: "Français", es: "Español", zh: "中文", ar: "العربية", ja: "日本語" };
 
+// Serverless hosts cap request bodies (4.5 MB on Vercel), so large photos are
+// re-encoded in the browser before upload. The server resizes to 2400 px anyway.
+const UPLOAD_LIMIT = 4 * 1024 * 1024;
+async function shrinkForUpload(file) {
+  if (file.size <= UPLOAD_LIMIT || typeof createImageBitmap !== "function") return file;
+  const bitmap = await createImageBitmap(file);
+  const scale = Math.min(1, 2400 / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.round(bitmap.width * scale); canvas.height = Math.round(bitmap.height * scale);
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  for (const quality of [.9, .8, .7]) {
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", quality));
+    if (blob && blob.size <= UPLOAD_LIMIT) return new File([blob], "portrait.jpg", { type: "image/jpeg" });
+  }
+  return file;
+}
+
 function postJSON(path, body) { return fetch(`/api${path}`, { method: "POST", headers: { "Content-Type": "application/json" }, credentials: "include", body: JSON.stringify(body) }); }
 
 export default function App({ page = "home", language: initialLanguage = "en", languages = defaultLanguages, translations = {}, analysis = null, error = "", navigate = url => window.location.assign(url) }) {
@@ -45,7 +62,7 @@ export default function App({ page = "home", language: initialLanguage = "en", l
   const upload = async () => {
     if (!file) return setNotice(t("choose_first"));
     setStage("upload"); setProgress(12); setNotice("");
-    const data = new FormData(); data.append("file", file); data.append("language", language);
+    const data = new FormData(); data.append("file", await shrinkForUpload(file)); data.append("language", language);
     try {
       const res = await fetch("/api/upload", { method: "POST", credentials: "include", body: data });
       const json = await res.json().catch(() => ({})); if (!res.ok) throw new Error(localizedError(json.error));
