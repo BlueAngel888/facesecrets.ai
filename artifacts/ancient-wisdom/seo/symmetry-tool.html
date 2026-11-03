@@ -1,0 +1,17 @@
+<section class="tool" id="symmetry-tool" aria-labelledby="tool-title">
+        <h2 id="tool-title" style="margin:0;font:400 28px/1.1 'Instrument Serif',Georgia,serif">Try it: free face symmetry test</h2>
+        <p class="hint">Your photo never leaves your device. Everything below runs in your browser; nothing is uploaded.</p>
+        <label>Choose a front-facing photo <input type="file" id="sym-file" accept="image/*"></label>
+        <div id="sym-work" hidden>
+          <label>Midline position <input type="range" id="sym-mid" min="30" max="70" step="0.1" value="50"></label>
+          <label>Head tilt correction <input type="range" id="sym-tilt" min="-15" max="15" step="0.5" value="0"></label>
+          <p><button type="button" class="button" id="sym-auto">Auto-find midline</button></p>
+          <div class="tool-grid">
+            <figure><canvas id="sym-original" width="300" height="400"></canvas><figcaption>Your photo</figcaption></figure>
+            <figure><canvas id="sym-left" width="300" height="400"></canvas><figcaption>Left + left mirrored</figcaption></figure>
+            <figure><canvas id="sym-right" width="300" height="400"></canvas><figcaption>Right + right mirrored</figcaption></figure>
+          </div>
+          <p class="score" id="sym-score" aria-live="polite">–</p>
+          <p class="hint">Approximate pixel-based symmetry score (0–100). Lighting, pose and hair change it a lot, so compare photos taken the same way. It is not a measure of attractiveness or personality.</p>
+        </div>
+      </section>

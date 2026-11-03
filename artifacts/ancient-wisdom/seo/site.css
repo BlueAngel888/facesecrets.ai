@@ -1,0 +1,102 @@
+/* Styles for the static SEO pages and the explainer under the home app.
+   Same palette and type as src/index.css. */
+:root {
+  color-scheme: dark;
+  --ink: #eee9de;
+  --muted: #a7a39b;
+  --deep: #080b12;
+  --panel: #10151c;
+  --line: rgba(238, 233, 222, .12);
+  --gold: #d4a95f;
+  --gold-soft: #ead09a;
+  --teal: #7fc0b1;
+}
+body.static-page { margin: 0; background: radial-gradient(circle at 80% 0, rgba(212,169,95,.08), transparent 30rem), var(--deep); color: var(--ink); font: 17px/1.7 "DM Sans", system-ui, sans-serif; }
+.static-page *, .seo-home *, .prerender * { box-sizing: border-box; }
+.wrap { width: min(1080px, calc(100% - 32px)); margin: 0 auto; }
+.static-page a, .seo-home a, .prerender a { color: var(--gold-soft); }
+
+.site-header { border-bottom: 1px solid var(--line); }
+.nav-row { min-height: 72px; display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; padding: 10px 0; }
+.logo { display: inline-flex; align-items: center; gap: 10px; color: var(--ink) !important; text-decoration: none; text-transform: uppercase; letter-spacing: .1em; font-size: 12px; font-weight: 700; }
+.logo-mark { width: 28px; height: 28px; border: 1px solid var(--gold); border-radius: 50%; display: grid; place-items: center; color: var(--gold); font: 20px/1 "Instrument Serif", Georgia, serif; }
+.site-header nav { display: flex; gap: 20px; flex-wrap: wrap; font-size: 14px; }
+.site-header nav a { color: var(--muted); text-decoration: none; }
+.site-header nav a:hover { color: var(--ink); }
+.nav-cta, .button { display: inline-block; background: var(--gold); color: #17130c !important; text-decoration: none; font-weight: 700; font-size: 14px; padding: 11px 18px; border-radius: 2px; }
+.nav-cta:hover, .button:hover { background: var(--gold-soft); }
+
+.article { padding: 36px 0 72px; max-width: 760px; }
+.crumbs { font-size: 13px; color: var(--muted); margin-bottom: 18px; }
+.crumbs a { color: var(--muted) !important; }
+.article h1, .prerender h1 { font: 400 clamp(40px, 6vw, 64px)/1.02 "Instrument Serif", Georgia, serif; letter-spacing: -.02em; margin: 0 0 16px; }
+.meta { color: var(--muted); font-size: 13px; letter-spacing: .04em; margin: 0 0 18px; }
+.lead { font-size: 19px; color: #cfcbc3; }
+.prose h2 { font: 400 34px/1.15 "Instrument Serif", Georgia, serif; margin: 48px 0 12px; }
+.prose h3 { font-size: 19px; margin: 30px 0 6px; }
+.prose p, .prose li { color: #d8d4cc; }
+.prose ul, .prose ol { padding-inline-start: 22px; }
+.prose li { margin: 6px 0; }
+.prose blockquote { margin: 24px 0; padding: 4px 0 4px 18px; border-inline-start: 2px solid var(--gold); color: var(--muted); }
+.table-wrap { overflow-x: auto; margin: 20px 0; }
+.prose table { border-collapse: collapse; width: 100%; font-size: 15px; }
+.prose th, .prose td { border-bottom: 1px solid var(--line); padding: 10px 12px; text-align: start; vertical-align: top; }
+.prose th { color: var(--gold); font-size: 12px; text-transform: uppercase; letter-spacing: .08em; }
+.toc { border: 1px solid var(--line); padding: 16px 20px; margin: 28px 0; background: rgba(16,21,28,.6); font-size: 15px; }
+.toc ol { margin: 8px 0 0; padding-inline-start: 20px; }
+.cta-box { margin: 56px 0 0; padding: 28px; border: 1px solid rgba(212,169,95,.35); background: linear-gradient(145deg, rgba(212,169,95,.1), rgba(16,21,28,.8)); }
+.cta-box h2 { font: 400 30px/1.1 "Instrument Serif", Georgia, serif; margin: 0 0 8px; }
+.related { margin-top: 56px; }
+.related h2, .seo-block h2 { font: 400 34px/1.1 "Instrument Serif", Georgia, serif; margin: 0 0 18px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+.card-link { display: block; padding: 18px; border: 1px solid var(--line); background: rgba(16,21,28,.7); text-decoration: none; color: var(--ink) !important; }
+.card-link:hover { border-color: rgba(212,169,95,.5); }
+.card-link span { display: block; color: var(--gold); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; margin-bottom: 6px; }
+.list-item { padding: 22px 0; border-bottom: 1px solid var(--line); }
+.list-item h2 { font: 400 28px/1.15 "Instrument Serif", Georgia, serif; margin: 0 0 6px; }
+.list-item h2 a { color: var(--ink) !important; text-decoration: none; }
+.list-item p { margin: 0; color: var(--muted); }
+
+/* Home: crawlable copy shown until the app mounts, then the explainer below it. */
+.prerender { padding: 90px 0; color: var(--ink); font: 17px/1.7 "DM Sans", system-ui, sans-serif; }
+.kicker { color: var(--gold); letter-spacing: .18em; text-transform: uppercase; font-size: 11px; font-weight: 700; }
+.seo-home { position: relative; z-index: 5; color: var(--ink); font: 16px/1.7 "DM Sans", system-ui, sans-serif; border-top: 1px solid var(--line); background: var(--deep); }
+.seo-block { padding: 56px 0 8px; }
+.steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; counter-reset: step; }
+.steps li { border: 1px solid var(--line); padding: 20px; counter-increment: step; }
+.steps li:before { content: "0" counter(step); color: var(--gold); font: 12px "Space Mono", monospace; }
+.steps h3 { margin: 8px 0 4px; font-size: 18px; }
+.steps p { margin: 0; color: var(--muted); }
+.checks { padding-inline-start: 20px; }
+.checks li { margin: 6px 0; color: #d8d4cc; }
+.honest { color: var(--muted); border-inline-start: 1px solid var(--gold); padding-inline-start: 14px; font-size: 14px; }
+.seo-home details { border-bottom: 1px solid var(--line); padding: 14px 0; }
+.seo-home summary { cursor: pointer; font-weight: 700; }
+.seo-home details p { color: #d8d4cc; margin: 8px 0 0; }
+
+.site-footer { border-top: 1px solid var(--line); margin-top: 56px; padding: 40px 0 56px; font-size: 14px; color: var(--muted); }
+.footer-grid { display: grid; grid-template-columns: 1.4fr 1fr 1fr 1fr; gap: 24px; }
+.site-footer nav { display: flex; flex-direction: column; gap: 6px; }
+.site-footer nav strong { color: var(--ink); margin-bottom: 4px; }
+.site-footer nav a { color: var(--muted) !important; text-decoration: none; }
+.site-footer nav a:hover { color: var(--ink) !important; }
+.footer-languages { display: grid !important; grid-template-columns: 1fr 1fr; }
+.footer-languages strong { grid-column: 1 / -1; }
+
+/* Free symmetry tool */
+.tool { border: 1px solid rgba(212,169,95,.35); background: rgba(16,21,28,.75); padding: 20px; margin: 24px 0 8px; }
+.tool-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 16px; }
+.tool-grid figure { margin: 0; text-align: center; font-size: 12px; color: var(--muted); }
+.tool canvas { width: 100%; height: auto; background: #0c1016; border: 1px solid var(--line); display: block; }
+.tool label { display: block; font-size: 14px; margin-top: 14px; }
+.tool input[type=range] { width: 100%; accent-color: var(--gold); }
+.tool .score { font: 400 44px/1 "Instrument Serif", Georgia, serif; color: var(--gold-soft); margin: 16px 0 4px; }
+.tool .hint { font-size: 13px; color: var(--muted); }
+.tool input[type=file] { color: var(--muted); max-width: 100%; }
+
+@media (max-width: 760px) {
+  .footer-grid { grid-template-columns: 1fr 1fr; }
+  .site-header nav { order: 3; width: 100%; gap: 14px; }
+  .prerender { padding: 48px 0; }
+  .tool-grid { grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+}
