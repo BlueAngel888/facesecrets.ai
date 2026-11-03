@@ -5,7 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import colors from '@/constants/colors';
-import { ApiError, mobileApi, type Analysis, type Page } from '@/lib/mobile-api';
+import { ApiError, mobileApi, privacyPolicyUrl, type Analysis, type Page } from '@/lib/mobile-api';
 import { availableReport, buyReport, loginForReport, restoreReportPurchases } from '@/lib/revenuecat';
 import { loadDeviceCredential, loadSession, saveDeviceCredential, saveSession } from '@/lib/session-store';
 import { IllustrativeCarousel, PortraitHero, StarField, Traditions, useReducedMotion } from '@/components/CelestialEditorial';
@@ -72,6 +72,7 @@ export default function Home() {
   const [purchaseConfirm, setPurchaseConfirm] = useState(false);
   const [promo, setPromo] = useState('');
   const [accepted, setAccepted] = useState(false);
+  const [consent, setConsent] = useState(false);
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
@@ -139,6 +140,7 @@ export default function Home() {
   };
   const upload = async () => {
     if (!photo) return setNotice(t('choose_first', 'Choose a portrait first.'));
+    if (!consent) return setNotice(t('consent_required', 'Please agree to send your portrait for analysis first.'));
     setBusy(true); setNotice(''); setStep('upload');
     try {
       const created = token && userId
@@ -224,6 +226,7 @@ export default function Home() {
     await saveSession(null);
     setToken(''); setUserId(''); setReportPackage(null); setPromo(''); setAccepted(false); setAnalysis(null); setPhoto(null); setNotice(''); setStep('choose');
   };
+  const openPrivacy = () => { Linking.openURL(privacyPolicyUrl).catch(handleError); };
   const retryPermissions = () => Linking.openSettings().catch(handleError);
   const languages = page?.languages || fallbackLanguages;
   return <View style={styles.root}>
@@ -240,7 +243,11 @@ export default function Home() {
         <View style={styles.sectionHead}><Text style={styles.eyebrow}>01 / {t('session', 'YOUR SESSION')}</Text><Text style={styles.heading}>{t('session_title', 'Begin your reflection')}</Text><Text style={styles.muted}>A clear, front-facing portrait is all you need.</Text></View>
         {photo ? <Image source={{ uri: photo.uri }} style={styles.photo} /> : <View style={styles.empty}><Feather name="user" color={c.primary} size={29} /><Text style={styles.emptyTitle}>{t('upload', 'Your portrait')}</Text><Text style={styles.muted}>{t('file_help', 'Use a clear front-facing photo in soft, even light.')}</Text></View>}
         <View style={styles.buttons}><Action testID="take-photo" title={t('camera', 'Take a photo')} icon="camera" onPress={() => select(true)} secondary luminous /><Action testID="choose-photo" title={t('upload', 'Choose a photo')} icon="image" onPress={() => select(false)} secondary luminous /></View>
-        {photo && <Action testID="continue" title={t('analyze', 'Continue to analysis')} icon="arrow-right" onPress={upload} disabled={busy} />}
+        {photo && <Pressable testID="consent" accessibilityRole="checkbox" accessibilityState={{ checked: consent }} onPress={() => setConsent(!consent)} style={styles.consent}>
+          <View style={[styles.checkbox, consent && styles.checkboxOn]}>{consent && <Feather name="check" size={14} color={c.primaryForeground} />}</View>
+          <Text style={styles.muted}>{t('consent', 'I agree that my portrait is sent to FaceSecrets and our AI provider, OpenAI, only to create this report. It is deleted after processing.')} <Text style={{ color: c.primary }} onPress={openPrivacy}>{t('privacy_link', 'Privacy policy')}</Text></Text>
+        </Pressable>}
+        {photo && <Action testID="continue" title={t('analyze', 'Continue to analysis')} icon="arrow-right" onPress={upload} disabled={busy || !consent} />}
         {notice.includes('Open device settings') && <Action title="Open settings" icon="settings" onPress={retryPermissions} secondary />}
         <Traditions language={language} />
         <IllustrativeCarousel reduced={reducedMotion} language={language} />
@@ -249,7 +256,7 @@ export default function Home() {
       {step === 'upload' && <View style={styles.wait}><ActivityIndicator color={c.primary} size="large" /><Text style={styles.heading}>{t('uploading', 'Uploading your portrait')}</Text><Text style={styles.muted}>Your image is processed privately and removed after analysis.</Text></View>}
       {step === 'unlock' && <>
         <View style={styles.sectionHead}><Text style={styles.eyebrow}>02 / {t('session', 'YOUR SESSION')}</Text><Text style={styles.heading}>{t('analyze', 'Unlock your report')}</Text></View>
-        <View style={styles.panel}><Feather name="lock" color={c.primary} size={22} /><Text style={styles.panelTitle}>Private portrait reading</Text><Text style={styles.body}>Your image is ready. A one-time promotion unlocks a complete analysis and downloadable PDF.</Text>
+        <View style={styles.panel}><Feather name="lock" color={c.primary} size={22} /><Text style={styles.panelTitle}>Private portrait reading</Text><Text style={styles.body}>Your image is ready. A one-time purchase unlocks a complete analysis and downloadable PDF.</Text>
           {!accepted && reportPackage && <>
             <Text style={styles.body}>One portrait report · {reportPackage.product.priceString}</Text>
             <Action testID="purchase-report" title={`${p.buy} · ${reportPackage.product.priceString}`} icon="credit-card" onPress={() => setPurchaseConfirm(true)} disabled={busy} />
@@ -257,11 +264,11 @@ export default function Home() {
           </>}
           {!accepted && <Action testID="verify-purchase" title="Verify an existing purchase" icon="check-circle" secondary onPress={() => { setBusy(true); redeem().catch(handleError).finally(() => setBusy(false)); }} disabled={busy} />}
           {!accepted && !reportPackage && <Text style={styles.muted}>{p.unavailable}</Text>}
-          <TextInput testID="promo-code" value={promo} onChangeText={setPromo} placeholder={t('promo', 'Promo code')} placeholderTextColor={c.mutedForeground} style={styles.input} autoCapitalize="none" />
-          <Action testID="apply-promo" title={busy ? 'Checking…' : t('check', 'Apply code')} icon="check" onPress={checkPromo} secondary disabled={busy || !promo.trim()} />
+          {Platform.OS !== 'ios' && <TextInput testID="promo-code" value={promo} onChangeText={setPromo} placeholder={t('promo', 'Promo code')} placeholderTextColor={c.mutedForeground} style={styles.input} autoCapitalize="none" />}
+          {Platform.OS !== 'ios' && <Action testID="apply-promo" title={busy ? 'Checking…' : t('check', 'Apply code')} icon="check" onPress={checkPromo} secondary disabled={busy || !promo.trim()} />}
           {accepted && <Action testID="run-analysis" title={t('free', 'Start analysis')} icon="arrow-right" onPress={run} disabled={busy} />}
         </View>
-        <View style={styles.unavailable}><Feather name="info" color={c.primary} size={18} /><Text style={styles.muted}>One purchase unlocks one portrait report. Purchases are verified before analysis. Use a valid code instead if you have one.</Text></View>
+        <View style={styles.unavailable}><Feather name="info" color={c.primary} size={18} /><Text style={styles.muted}>One purchase unlocks one portrait report. Purchases are verified before analysis.{Platform.OS !== 'ios' ? ' Use a valid code instead if you have one.' : ''}</Text></View>
         {purchaseConfirm && <View style={styles.panel}><Text style={styles.panelTitle}>{p.confirm}</Text><Text style={styles.body}>{p.question} {reportPackage?.product.priceString}?{__DEV__ ? ' Test Store — no real charge.' : ''}</Text><Action title={p.confirm} icon="check" onPress={purchase} /><Action title={p.later} icon="x" secondary onPress={() => setPurchaseConfirm(false)} /></View>}
         <Action title={t('cancel_button', 'Cancel session')} icon="x" onPress={startOver} secondary />
       </>}
@@ -276,7 +283,7 @@ export default function Home() {
         <Action title={t('again', 'Start again')} icon="rotate-ccw" secondary onPress={startOver} />
       </>}
       {!!notice && <View style={styles.notice}><Feather name="info" size={16} color={c.accent} /><Text style={styles.noticeText}>{notice}</Text></View>}
-      <View style={styles.footer}><Feather name="shield" color={c.primary} size={15} /><Text style={styles.muted}>{t('privacy', 'Your portrait is used only for your report. For entertainment and self-reflection; not medical, psychological or predictive advice. Photos are deleted after processing. Reports are removed after the session expires.')}</Text></View>
+      <View style={styles.footer}><Feather name="shield" color={c.primary} size={15} /><Text style={styles.muted}>{t('privacy', 'Your portrait is used only for your report. For entertainment and self-reflection; not medical, psychological or predictive advice. Photos are deleted after processing. Reports are removed after the session expires.')} <Text style={{ color: c.primary }} onPress={openPrivacy}>{t('privacy_link', 'Privacy policy')}</Text></Text></View>
     </ScrollView>
   </View>;
 }
@@ -323,5 +330,8 @@ const styles = StyleSheet.create({
   wait: { paddingVertical: 115, alignItems: 'center', gap: 20 },
   notice: { marginTop: 20, borderLeftWidth: 2, borderLeftColor: c.accent, padding: 12, backgroundColor: c.card, flexDirection: 'row', gap: 10 },
   noticeText: { fontFamily: 'DMSans_400Regular', color: c.foreground, fontSize: 13, flex: 1, lineHeight: 20 },
+  consent: { flexDirection: 'row', gap: 12, alignItems: 'flex-start', paddingVertical: 6 },
+  checkbox: { width: 22, height: 22, borderWidth: 1, borderColor: c.primary, alignItems: 'center', justifyContent: 'center', marginTop: 1 },
+  checkboxOn: { backgroundColor: c.primary },
   footer: { flexDirection: 'row', gap: 12, marginTop: 40, borderTopWidth: 1, borderTopColor: c.border, paddingTop: 24 },
 });

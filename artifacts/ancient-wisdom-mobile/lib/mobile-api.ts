@@ -10,6 +10,7 @@ export class ApiError extends Error {
 
 const host = process.env.EXPO_PUBLIC_DOMAIN;
 const base = host ? `https://${host}/api` : '/api';
+export const privacyPolicyUrl = `${host ? `https://${host}` : ''}/api/privacy`;
 
 async function response<T>(res: Response): Promise<T> {
   if (res.ok) return res.json() as Promise<T>;
